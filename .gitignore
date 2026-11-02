@@ -1,0 +1,4 @@
+backend/.env
+backend/storage/media/
+backend/storage/logs/
+*.zip

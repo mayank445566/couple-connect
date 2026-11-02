@@ -1,0 +1,22 @@
+{
+  "name": "couple-connect/backend",
+  "description": "Couple Connect PHP API (cPanel compatible)",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": ">=8.2",
+    "ext-pdo": "*",
+    "ext-sodium": "*",
+    "ext-fileinfo": "*",
+    "ext-json": "*",
+    "phpmailer/phpmailer": "^6.9"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    },
+    "files": [
+      "src/Core/Http.php"
+    ]
+  }
+}

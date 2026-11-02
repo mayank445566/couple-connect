@@ -1,0 +1,28 @@
+# Couple Connect API — Apache / LiteSpeed (cPanel)
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Keep the Authorization header (stripped by some PHP-FPM/CGI setups)
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  # Force HTTPS
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+  # Front controller
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Never serve dotfiles
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_php.c>
+  php_value upload_max_filesize 64M
+  php_value post_max_size 70M
+  php_value max_execution_time 120
+</IfModule>

@@ -1,0 +1,54 @@
+<?php
+declare(strict_types=1);
+// cPanel cron (every minute):  * * * * * /usr/local/bin/php /home/USER/couple-connect/backend/bin/cron.php >/dev/null 2>&1
+
+use App\Core\Database;
+use App\Services\Events;
+use App\Services\MediaVault;
+
+require dirname(__DIR__) . '/src/bootstrap.php';
+
+$lock = fopen(sys_get_temp_dir() . '/couple-connect-cron.lock', 'c');
+if (!flock($lock, LOCK_EX | LOCK_NB)) {
+    exit; // previous run still going
+}
+
+// 1. Disappearing messages: hard-delete expired rows and their media
+$expired = Database::all('SELECT id, couple_id, media_id FROM messages WHERE expires_at IS NOT NULL AND expires_at <= UTC_TIMESTAMP() LIMIT 500');
+foreach ($expired as $m) {
+    Database::run('DELETE FROM messages WHERE id = ?', [$m['id']]);
+    if ($m['media_id']) {
+        Database::run('UPDATE media SET deleted_at = UTC_TIMESTAMP() WHERE id = ? AND NOT EXISTS (SELECT 1 FROM messages WHERE media_id = ?)', [$m['media_id'], $m['media_id']]);
+    }
+    Events::emit((int)$m['couple_id'], null, 'message.expired', ['id' => (int)$m['id']]);
+}
+
+// 2. Physically remove files of deleted media
+foreach (Database::all('SELECT id, storage_name FROM media WHERE deleted_at IS NOT NULL AND storage_name <> "" LIMIT 500') as $md) {
+    MediaVault::delete($md['storage_name']);
+    Database::run('DELETE FROM media WHERE id = ?', [$md['id']]);
+}
+
+// 3. Accounts whose deletion grace period (7 days) has passed: remove content, anonymise the row
+foreach (Database::all('SELECT id FROM users WHERE deletion_requested_at IS NOT NULL AND deletion_requested_at <= UTC_TIMESTAMP() - INTERVAL 7 DAY AND status <> "deleted" LIMIT 50') as $u) {
+    $uid = (int)$u['id'];
+    Database::transaction(function () use ($uid) {
+        Database::run('DELETE FROM messages WHERE sender_id = ?', [$uid]);
+        Database::run('UPDATE media SET deleted_at = UTC_TIMESTAMP() WHERE owner_id = ?', [$uid]);
+        Database::run('DELETE FROM auth_tokens WHERE user_id = ?', [$uid]);
+        Database::run('DELETE FROM user_codes WHERE user_id = ?', [$uid]);
+        Database::run('DELETE FROM presence WHERE user_id = ?', [$uid]);
+        Database::run(
+            "UPDATE users SET status = 'deleted', email = NULL, phone = NULL, display_name = 'Deleted user', bio = NULL,
+                    avatar_media_id = NULL, dob = '1900-01-01', password_hash = ?, active_couple_id = NULL WHERE id = ?",
+            [password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT), $uid]
+        );
+    });
+}
+
+// 4. Housekeeping
+Database::run('DELETE FROM rate_limits WHERE reset_at < UTC_TIMESTAMP() - INTERVAL 1 HOUR');
+Database::run('DELETE FROM user_codes WHERE expires_at < UTC_TIMESTAMP() - INTERVAL 1 DAY');
+Database::run("UPDATE pair_requests SET status = 'expired' WHERE status IN ('open','pending_approval') AND expires_at <= UTC_TIMESTAMP()");
+Database::run('DELETE FROM auth_tokens WHERE (revoked_at IS NOT NULL AND revoked_at < UTC_TIMESTAMP() - INTERVAL 30 DAY) OR expires_at < UTC_TIMESTAMP() - INTERVAL 30 DAY');
+Database::run('DELETE FROM couple_events WHERE created_at < UTC_TIMESTAMP() - INTERVAL 30 DAY LIMIT 5000');
