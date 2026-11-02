@@ -30,12 +30,64 @@ final class Installer
             }
             $sql = preg_replace('/^\s*--.*$/m', '', file_get_contents($file));
             foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
-                $pdo->exec($stmt);
+                try {
+                    $pdo->exec($stmt);
+                } catch (\PDOException $e) {
+                    // A half-applied earlier attempt left this column or index in place already: carry on
+                    $code = (int)($e->errorInfo[1] ?? 0);
+                    if (!in_array($code, [1060, 1061], true)) {
+                        throw $e;
+                    }
+                }
             }
             $pdo->prepare('INSERT INTO schema_migrations (version) VALUES (?)')->execute([$version]);
             $applied[] = $version;
         }
         return $applied;
+    }
+
+    /**
+     * Applies new migrations and content once after files are uploaded, so an update works even if
+     * nobody presses the admin button. Keyed on the newest migration and seed file; one run at a time.
+     */
+    public static function autoUpdate(): void
+    {
+        $seedDir = is_dir(dirname(BASE_PATH) . '/database/seeds') ? dirname(BASE_PATH) . '/database/seeds' : BASE_PATH . '/database/seeds';
+        $files = array_merge(glob(self::migrationsDir() . '/*.sql') ?: [], glob($seedDir . '/*.php') ?: [], glob($seedDir . '/more/*.php') ?: []);
+        if (!$files) {
+            return;
+        }
+        $stamp = '';
+        foreach ($files as $f) {
+            $stamp .= basename($f) . ':' . filesize($f) . ':' . filemtime($f) . ';';
+        }
+        $stamp = sha1($stamp);
+        $dir = \App\Core\Config::storage('cache');
+        $marker = $dir . '/content-version';
+        if (@file_get_contents($marker) === $stamp) {
+            return;
+        }
+        $failed = $dir . '/content-update-failed';
+        if (is_file($failed) && time() - (int)filemtime($failed) < 600) {
+            return;
+        }
+        $lock = @fopen($dir . '/content-update.lock', 'c');
+        if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+            return; // another request is updating right now
+        }
+        try {
+            @set_time_limit(300);
+            self::migrate();
+            self::seed();
+            file_put_contents($marker, $stamp);
+            @unlink($failed);
+        } catch (\Throwable $e) {
+            error_log('[auto update] ' . $e->getMessage());
+            @touch($failed);
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
     }
 
     /** Safe to re-run: existing rows (matched by slug / text) are updated, never duplicated. */

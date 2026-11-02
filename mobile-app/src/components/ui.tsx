@@ -98,7 +98,7 @@ export function cardStyle(c: ReturnType<typeof useTheme>['c']): ViewStyle {
 
 export function Card({ children, style, onPress }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void }) {
   const { c } = useTheme();
-  const body = <View style={[cardStyle(c), { padding: 18, gap: 8 }, style, onPress ? { flex: undefined, flexGrow: undefined, flexBasis: undefined, flexShrink: undefined, minWidth: undefined, width: undefined, height: '100%' } : null]}>{children}</View>;
+  const body = <View style={[cardStyle(c), { padding: 18, gap: 8 }, style, onPress ? { flex: undefined, flexBasis: undefined, flexShrink: undefined, minWidth: undefined, width: undefined, flexGrow: 1 } : null]}>{children}</View>;
   // When pressable, size/flex props belong on the outer Pressable so cards still share a row
   const f = StyleSheet.flatten(style) ?? {};
   const outer: ViewStyle = { flex: f.flex, flexGrow: f.flexGrow, flexBasis: f.flexBasis, flexShrink: f.flexShrink, minWidth: f.minWidth, width: f.width, alignSelf: f.alignSelf };

@@ -23,6 +23,9 @@ if (!is_file(dirname(__DIR__) . '/.env')) {
 
 require dirname(__DIR__) . '/src/bootstrap.php';
 
+// New migrations or content uploaded: apply them once, before serving requests
+\App\Setup\Installer::autoUpdate();
+
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: no-referrer');
 header('X-Frame-Options: DENY');
