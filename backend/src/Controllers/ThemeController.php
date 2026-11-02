@@ -86,6 +86,10 @@ final class ThemeController
             throw new ApiException(402, 'premium_required', 'Unlock Premium to customise colours.');
         }
         $this->prefs((int)$user['id']);
+        // Going back to the theme's own colours is always allowed, with or without Premium
+        if ($req->input('reset_colors') === true) {
+            Database::run('UPDATE user_preferences SET accent = NULL, bubble_mine = NULL, bubble_theirs = NULL WHERE user_id = ?', [$user['id']]);
+        }
         if ($d) {
             $sets = [];
             $params = [];

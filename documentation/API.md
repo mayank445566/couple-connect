@@ -204,7 +204,7 @@ Entitlements: `{"premium": {"owned": true, "via_partner": false}, "themes": {...
 | Method | Path | Body | Notes |
 | --- | --- | --- | --- |
 | GET | /themes | – | `{themes: [{slug, name, premium, locked, tokens, wallpaper_url, active}], preferences}` |
-| GET / PATCH | /me/preferences | `theme_slug?, color_mode? (system/light/dark), accent?, bubble_mine?, bubble_theirs? (#RRGGBB, premium), font_scale? (0.8–1.6), wallpaper?, notify_messages?, notify_games?, notify_reminders?, show_preview?, quiet_start?, quiet_end? (HH:MM)` | Premium theme or custom colours without the entitlement → 402. |
+| GET / PATCH | /me/preferences | `reset_colors? (true clears custom colours), theme_slug?, color_mode? (system/light/dark), accent?, bubble_mine?, bubble_theirs? (#RRGGBB, premium), font_scale? (0.8–1.6), wallpaper?, notify_messages?, notify_games?, notify_reminders?, show_preview?, quiet_start?, quiet_end? (HH:MM)` | Premium theme or custom colours without the entitlement → 402. |
 
 ## Long-distance hub and shared space
 
