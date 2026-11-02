@@ -1,0 +1,16 @@
+{
+  "name": "couple-connect-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WebSocket relay for Couple Connect: instant sync nudges and live partner features. Stores nothing.",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "ws": "8.18.3"
+  }
+}

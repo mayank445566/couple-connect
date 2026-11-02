@@ -99,7 +99,7 @@ const check = (name, ok) => { results.push([name, ok]); console.log((ok ? 'PASS 
   const sess = await call('GET', '/games/sessions', null, tokB);
   const sid = sess.data[0].id;
   await call('POST', `/games/sessions/${sid}/join`, null, tokB);
-  await page.getByText(/Round 1 of/).waitFor({ timeout: 10000 });
+  await page.getByText(/Round 1 of/).last().waitFor({ timeout: 10000 });
   const st = await call('GET', `/games/sessions/${sid}`, null, tokB);
   const opt = st.data.round.question.options[0];
   await call('POST', `/games/sessions/${sid}/answer`, { answer: { choice: opt } }, tokB);

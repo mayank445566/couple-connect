@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Background } from '../components/Background';
 import { AuthProvider, useAuth } from '../state/AuthProvider';
 import { SyncProvider } from '../state/SyncProvider';
 import { ThemeProvider, useTheme } from '../state/ThemeProvider';
@@ -55,6 +56,7 @@ function Shell() {
     <>
       <StatusBar style={c.dark ? 'light' : 'dark'} />
       <Guard />
+      <Background />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.background }, animation: 'slide_from_right' }} />
     </>
   );

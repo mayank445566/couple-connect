@@ -1,0 +1,21 @@
+# /etc/systemd/system/couple-connect-relay.service
+[Unit]
+Description=Couple Connect WebSocket relay
+After=network.target
+
+[Service]
+Type=simple
+User=relay
+WorkingDirectory=/opt/couple-connect/relay
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=2
+Environment=NODE_ENV=production
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+MemoryMax=300M
+
+[Install]
+WantedBy=multi-user.target

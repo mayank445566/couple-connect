@@ -22,7 +22,10 @@
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "MODIFY_AUDIO_SETTINGS",
+        "BLUETOOTH_CONNECT",
+        "VIBRATE"
       ],
       "blockedPermissions": [
         "android.permission.READ_MEDIA_AUDIO",
@@ -59,7 +62,14 @@
           "photosPermission": "Allow Couple Connect to share photos and videos with your partner."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "@config-plugins/react-native-webrtc",
+      [
+        "expo-notifications",
+        {
+          "color": "#E8456B"
+        }
+      ]
     ],
     "scheme": "coupleconnect",
     "extra": {

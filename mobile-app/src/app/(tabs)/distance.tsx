@@ -11,6 +11,8 @@ const ITEMS: { icon: React.ComponentProps<typeof Ionicons>['name']; title: strin
   { icon: 'help-circle-outline', title: 'Daily question', text: 'One question a day, answered together', to: '/daily' },
   { icon: 'mail-outline', title: 'Letters & notes', text: 'Open-when letters, journal, shared notes, wishes', to: '/notes' },
   { icon: 'airplane-outline', title: 'Next meeting', text: 'Set the date you see each other next', to: '/couple-dates' },
+  { icon: 'brush-outline', title: 'Draw together', text: 'A live doodle board you both see at once', to: '/draw' },
+  { icon: 'call-outline', title: 'Call history', text: 'Voice and video calls with your partner', to: '/calls' },
 ];
 
 export default function Distance() {
@@ -26,15 +28,6 @@ export default function Distance() {
       {(Object.keys(HUB_LISTS) as HubList[]).map((k) => (
         <Tile key={k} icon={HUB_LISTS[k].icon} title={HUB_LISTS[k].title} text={HUB_LISTS[k].empty} onPress={() => router.push(`/hub/${k}`)} color={c.primary} />
       ))}
-      <Card>
-        <Row>
-          <Ionicons name="call-outline" size={22} color={c.muted} />
-          <View style={{ flex: 1 }}>
-            <T weight="600">Voice & video calls</T>
-            <Muted>Coming in the next update. They need a small relay server, which is being set up.</Muted>
-          </View>
-        </Row>
-      </Card>
     </Screen>
   );
 }

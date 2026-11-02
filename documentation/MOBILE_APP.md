@@ -16,9 +16,23 @@ React Native with Expo SDK 58 and expo-router (TypeScript). The same code also r
 | Us | Profile and photo, partner, links to themes, Premium, 18+ and settings |
 | Premium | ₹199 one-time unlock through Razorpay (native SDK on Android, Razorpay Checkout on web). The server creates the order and verifies the signature; the app never holds a secret and never unlocks on its own. Restore purchases |
 | Themes | Light, dark or system, 14 themes (premium ones locked), text size, custom accent and bubble colours, reset |
-| Settings | Last seen and read receipts, notification choices (saved now, used when push arrives in Phase 4; previews off by default), quiet hours, change password, add phone, download my data, signed-in devices, sign out everywhere, report, unpair (optionally block), delete account |
+| Settings | Last seen and read receipts, notification choices (previews off by default), quiet hours, change password, add phone, download my data, signed-in devices, sign out everywhere, report, unpair (optionally block), delete account |
 
-Calls and push notifications come in Phase 4, because they need the small relay server. The app says so instead of showing buttons that do nothing.
+## Calls, push and live features (Phase 4)
+
+- **Voice and video calls** from the chat header or Together → Call history: WebRTC with mute, camera on/off, flip camera and a call timer. Audio and video go directly between the phones (or through your TURN server); the API only sees call state and connection details.
+- **Incoming calls** open the call screen at once when the app is open. When it's closed, a high-priority "Incoming call" notification rings; tapping it opens the call. A full-screen lock-screen ringer (Android ConnectionService / CallKeep) is not included yet.
+- **Instant sync**: with the relay configured, new messages, game moves and taps arrive within a fraction of a second; without it the app polls as before.
+- **Draw together**: a live doodle board through the relay. Nothing is saved.
+- **Push notifications** (Android, FCM): messages, taps, game invites, letters, calls and missed calls, following each person's notification settings. Message text only appears if they turned on previews.
+
+### Firebase setup for push
+
+1. Create a Firebase project, add an Android app with package `com.coupleconnect.app`, and download `google-services.json`.
+2. For EAS builds: `eas env:create --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json --visibility secret` (or put the file in `mobile-app/`, which is git-ignored, for local builds). `app.config.js` picks it up.
+3. In Firebase → Project settings → Service accounts, generate a private key. Upload it to the server **outside** `public_html` and set `PUSH_DRIVER=fcm` and `FCM_SERVICE_ACCOUNT=/home/USER/secure/firebase.json` in `backend/.env`.
+
+Without these the app still works; it just can't notify a closed app.
 
 ## Security notes
 
@@ -60,3 +74,5 @@ cd mobile-app && EXPO_PUBLIC_API_URL=http://127.0.0.1:8088 npx expo export -p we
 node ../tests/e2e/serve_static.js /tmp/ccweb &          # serves on 127.0.0.1:8081
 node ../tests/e2e/mobile_web_smoke.js /tmp/shots        # needs Playwright, MAIL_DRIVER=log and CORS_ORIGINS=http://127.0.0.1:8081
 ```
+
+Phase 4 adds `tests/e2e/call_two_browsers.js`: two browsers with fake camera and microphone, connected through the local relay, place a real video call, check video flows both ways, hang up, and draw on the shared board. Run the relay first (`cd relay && npm install && node server.js` with the same `RELAY_SECRET` as the API).

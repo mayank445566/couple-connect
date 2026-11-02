@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async (opts?: { remote?: boolean }) => {
     if (opts?.remote !== false) {
       try {
+        await api('DELETE', '/me/push-token').catch(() => {});
         await api('POST', '/auth/logout');
       } catch {
         /* signing out locally regardless */

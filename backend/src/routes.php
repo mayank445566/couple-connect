@@ -2,6 +2,8 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController as A;
+use App\Controllers\CallController as Cl;
+use App\Controllers\RealtimeController as Rt;
 use App\Controllers\CoupleController as C;
 use App\Controllers\MediaController as Md;
 use App\Controllers\MessageController as M;
@@ -133,6 +135,22 @@ $r->add('GET', '/hub/{slug}', [H::class, 'list']);
 $r->add('POST', '/hub/{slug}', [H::class, 'create']);
 $r->add('PATCH', '/hub/{slug}/{id}', [H::class, 'update']);
 $r->add('DELETE', '/hub/{slug}/{id}', [H::class, 'delete']);
+
+// Real-time relay and push notifications
+$r->add('POST', '/realtime/ticket', [Rt::class, 'ticket']);
+$r->add('POST', '/me/push-token', [Rt::class, 'savePushToken']);
+$r->add('DELETE', '/me/push-token', [Rt::class, 'deletePushToken']);
+
+// Voice and video calls
+$r->add('GET', '/calls', [Cl::class, 'index']);
+$r->add('POST', '/calls', [Cl::class, 'start']);
+$r->add('GET', '/calls/turn', [Cl::class, 'turn']);
+$r->add('GET', '/calls/{id}', [Cl::class, 'show']);
+$r->add('POST', '/calls/{id}/accept', [Cl::class, 'accept']);
+$r->add('POST', '/calls/{id}/decline', [Cl::class, 'decline']);
+$r->add('POST', '/calls/{id}/end', [Cl::class, 'end']);
+$r->add('POST', '/calls/{id}/signal', [Cl::class, 'signal']);
+$r->add('GET', '/calls/{id}/signals', [Cl::class, 'signals']);
 
 // Safety
 $r->add('POST', '/reports', [R::class, 'store']);

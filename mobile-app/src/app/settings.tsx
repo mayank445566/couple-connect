@@ -69,7 +69,6 @@ export default function Settings() {
       {n ? (
         <Card>
           <T weight="700">Notifications</T>
-          <Muted>Push notifications arrive with the next update. These choices are saved now and will apply then.</Muted>
           <Toggle label="Messages" value={n.messages} onChange={(v) => patchPrefs({ notify_messages: v })} />
           <Toggle label="Show message text in notifications" hint="Off by default so nothing private shows on your lock screen." value={n.show_preview} onChange={(v) => patchPrefs({ show_preview: v })} />
           <Toggle label="Game invites" value={n.games} onChange={(v) => patchPrefs({ notify_games: v })} />
