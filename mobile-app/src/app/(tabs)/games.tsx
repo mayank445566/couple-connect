@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { Button, Card, ErrorBox, Header, Muted, Pill, Row, Screen, SkeletonList, T, timeAgo } from '../../components/ui';
+import { Button, Card, ErrorBox, Header, Muted, Pill, Row, Screen, SkeletonList, T, timeAgo, IconBubble } from '../../components/ui';
 import { api } from '../../lib/api';
 import { gameIcon } from '../../lib/constants';
 import { GamesIndex, Session } from '../../lib/games';
@@ -10,6 +10,9 @@ import { useLoad } from '../../lib/useLoad';
 import { useAuth } from '../../state/AuthProvider';
 import { useSyncEvent } from '../../state/SyncProvider';
 import { useTheme } from '../../state/ThemeProvider';
+
+/** A different soft colour per game keeps the list lively. */
+const ACCENTS = ['#FF4F86', '#FF8A3D', '#8E6CFF', '#20A99A', '#E9A100', '#3B82F6'];
 
 export default function Games() {
   const { c } = useTheme();
@@ -55,12 +58,10 @@ export default function Games() {
       {d && section === 'adult' ? <AdultGate status={d.adult} onChanged={idx.reload} /> : null}
 
       {d && (section === 'free' || (d.adult.my_opt_in && d.adult.partner_opt_in))
-        ? d.games[section].map((g) => (
+        ? d.games[section].map((g, i) => (
             <Card key={g.slug} onPress={() => router.push(`/games/${g.slug}`)}>
-              <Row>
-                <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: c.primary + '22', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name={gameIcon(g.icon)} size={22} color={c.primary} />
-                </View>
+              <Row gap={14}>
+                <IconBubble name={gameIcon(g.icon)} size={50} color={section === 'adult' ? undefined : ACCENTS[i % ACCENTS.length]} filled={section === 'adult'} />
                 <View style={{ flex: 1 }}>
                   <T weight="700">{g.title}</T>
                   <Muted>{g.description}</Muted>

@@ -142,7 +142,7 @@ function Toggle({ label, hint, value, onChange }: { label: string; hint?: string
         <T>{label}</T>
         {hint ? <Muted>{hint}</Muted> : null}
       </View>
-      <Switch value={value} onValueChange={onChange} trackColor={{ true: c.primary, false: c.border }} thumbColor="#fff" />
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: c.primary, false: c.border }} thumbColor="#fff" {...({ activeThumbColor: "#fff", activeTrackColor: c.primary } as object)} />
     </Row>
   );
 }

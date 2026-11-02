@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { Button, Card, ErrorBox, Header, Hero, Muted, Row, Screen, SkeletonList, T} from '../components/ui';
+import { Button, Card, ErrorBox, Header, Hero, Muted, Row, Screen, SkeletonList, T, IconBubble } from '../components/ui';
 import { api, Entitlements } from '../lib/api';
 import { billing, buy, PaymentCancelled, PaymentPending, restorePlay } from '../lib/payments';
 import { useLoad } from '../lib/useLoad';
@@ -71,7 +71,7 @@ export default function Premium() {
       </Hero>
       {PERKS.map(([icon, text]) => (
         <Row key={text}>
-          <Ionicons name={icon} size={22} color={c.primary} />
+          <IconBubble name={icon} size={38} />
           <T style={{ flex: 1 }}>{text}</T>
         </Row>
       ))}

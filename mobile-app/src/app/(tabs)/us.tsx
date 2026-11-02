@@ -3,7 +3,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
-import { Avatar, Button, Card, Field, Header, Muted, Row, Screen, T, errorText } from '../../components/ui';
+import { Avatar, Button, Card, Field, Header, Muted, Row, Screen, T, errorText, IconBubble } from '../../components/ui';
 import { api, Couple, Me, uploadMedia } from '../../lib/api';
 import { useLoad } from '../../lib/useLoad';
 import { useAuth } from '../../state/AuthProvider';
@@ -96,7 +96,7 @@ export default function Us() {
       {links.map(([icon, label, to]) => (
         <Card key={to} onPress={() => router.push(to as any)} style={{ paddingVertical: 14 }}>
           <Row>
-            <Ionicons name={icon} size={22} color={c.primary} />
+            <IconBubble name={icon} size={38} />
             <T style={{ flex: 1 }}>{label}</T>
             <Ionicons name="chevron-forward" size={18} color={c.muted} />
           </Row>

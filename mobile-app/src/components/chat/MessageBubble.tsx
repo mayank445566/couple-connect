@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { memo } from 'react';
-import { Pressable, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { authedSource, Message } from '../../lib/api';
 import type { OutboxItem } from '../../state/SyncProvider';
 import { useTheme } from '../../state/ThemeProvider';
@@ -42,7 +43,8 @@ type Props = {
 export const MessageBubble = memo(function MessageBubble({ m, replyTo, onLongPress, onReplyPress, highlighted }: Props) {
   const { c } = useTheme();
   const bg = m.mine ? c.bubble_mine : c.bubble_theirs;
-  const fg = readable(bg);
+  const grad = m.mine && !m.deleted ? c.bubbleGrad : null;
+  const fg = grad ? '#FFFFFF' : readable(bg);
   const media = m.media;
   const isMedia = m.type === 'image' || m.type === 'video' || m.type === 'gif';
   const w = media?.width && media?.height ? Math.min(240, media.width) : 220;
@@ -60,9 +62,13 @@ export const MessageBubble = memo(function MessageBubble({ m, replyTo, onLongPre
           if (!media || m.deleted) return;
           if (m.type === 'image' || m.type === 'video' || m.type === 'file' || m.type === 'audio') router.push({ pathname: '/media', params: { id: String(media.id), type: m.type, mime: media.mime, name: media.name ?? '' } });
         }}
-        style={{ maxWidth: '80%', backgroundColor: m.deleted ? 'transparent' : bg, borderWidth: m.deleted ? 1 : 0, borderColor: c.border, borderRadius: 20, borderBottomRightRadius: m.mine ? 6 : 20, borderBottomLeftRadius: m.mine ? 20 : 6, padding: isMedia ? 4 : 10, paddingHorizontal: isMedia ? 4 : 14, gap: 4 }}
+        style={[
+          { maxWidth: '80%', overflow: 'hidden', backgroundColor: m.deleted ? 'transparent' : bg, borderWidth: m.deleted ? 1 : 0, borderColor: c.border, borderRadius: 22, borderBottomRightRadius: m.mine ? 8 : 22, borderBottomLeftRadius: m.mine ? 22 : 8, padding: isMedia ? 4 : 11, paddingHorizontal: isMedia ? 4 : 15, gap: 4 },
+          !m.deleted && c.shadow ? ({ boxShadow: m.mine ? `0px 4px 12px ${c.primary}2E` : '0px 2px 10px rgba(120, 30, 60, 0.07)' } as ViewStyle) : null,
+        ]}
         accessibilityHint="Long press for options"
       >
+        {grad ? <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
         {m.forwarded ? <T size={11} color={fg + 'AA'}>↪ Forwarded</T> : null}
         {replyTo ? (
           <Pressable onPress={() => onReplyPress?.(replyTo.id)} style={{ borderLeftWidth: 3, borderLeftColor: fg + '88', paddingLeft: 8, paddingVertical: 2, marginHorizontal: isMedia ? 6 : 0, marginTop: isMedia ? 6 : 0 }}>
@@ -108,7 +114,7 @@ export const MessageBubble = memo(function MessageBubble({ m, replyTo, onLongPre
         </View>
       </Pressable>
       {reacts.length ? (
-        <View style={{ flexDirection: 'row', gap: 4, marginTop: -6, backgroundColor: c.surface, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: c.border }}>
+        <View style={[{ flexDirection: 'row', gap: 4, marginTop: -8, marginHorizontal: 8, backgroundColor: c.surface, borderRadius: 14, paddingHorizontal: 8, paddingVertical: 3, borderWidth: c.shadow ? 0 : 1, borderColor: c.border }, c.shadow ? ({ boxShadow: '0px 2px 8px rgba(120, 30, 60, 0.12)' } as ViewStyle) : null]}>
           {reacts.map(([e, n]) => (
             <T key={e} size={13}>{e}{n > 1 ? ` ${n}` : ''}</T>
           ))}
@@ -121,10 +127,11 @@ export const MessageBubble = memo(function MessageBubble({ m, replyTo, onLongPre
 /** A message still on the device: sending, queued offline, or failed. */
 export function PendingBubble({ item, onRetry, onDiscard }: { item: OutboxItem; onRetry: () => void; onDiscard: () => void }) {
   const { c } = useTheme();
-  const fg = readable(c.bubble_mine);
+  const fg = c.bubbleGrad ? '#FFFFFF' : readable(c.bubble_mine);
   return (
     <View style={{ alignItems: 'flex-end', paddingHorizontal: 12, marginVertical: 3 }}>
-      <View style={{ maxWidth: '80%', backgroundColor: c.bubble_mine, opacity: 0.75, borderRadius: 20, borderBottomRightRadius: 6, padding: 10, paddingHorizontal: 14, gap: 4 }}>
+      <View style={{ maxWidth: '80%', overflow: 'hidden', backgroundColor: c.bubble_mine, opacity: 0.75, borderRadius: 22, borderBottomRightRadius: 8, padding: 11, paddingHorizontal: 15, gap: 4 }}>
+        {c.bubbleGrad ? <LinearGradient colors={c.bubbleGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
         {item.local_uri && item.type === 'image' ? <Image source={{ uri: item.local_uri }} style={{ width: 200, height: 200, borderRadius: 14 }} /> : null}
         {item.type !== 'text' && !item.local_uri ? <T color={fg}>{preview({ type: item.type, body: null })}</T> : null}
         {item.body ? <T color={fg}>{item.body}</T> : null}
