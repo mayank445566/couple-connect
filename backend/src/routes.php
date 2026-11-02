@@ -8,6 +8,11 @@ use App\Controllers\MessageController as M;
 use App\Controllers\ProfileController as P;
 use App\Controllers\ReportController as R;
 use App\Controllers\SyncController as S;
+use App\Controllers\GameController as G;
+use App\Controllers\HubController as H;
+use App\Controllers\PhoneController as Ph;
+use App\Controllers\StoreController as St;
+use App\Controllers\ThemeController as T;
 use App\Core\Router;
 
 $r = new Router();
@@ -70,6 +75,64 @@ $r->add('POST', '/media', [Md::class, 'upload']);
 $r->add('GET', '/media/{id}', [Md::class, 'download'], false);
 $r->add('HEAD', '/media/{id}', [Md::class, 'download'], false);
 $r->add('GET', '/media/{id}/link', [Md::class, 'link']);
+
+// Phone signup/login (SMS OTP)
+$r->add('POST', '/auth/phone/request-otp', [Ph::class, 'requestOtp'], false);
+$r->add('POST', '/auth/phone/register', [Ph::class, 'register'], false);
+$r->add('POST', '/auth/phone/login', [Ph::class, 'login'], false);
+$r->add('POST', '/me/phone', [Ph::class, 'attach']);
+
+// Games (specific paths before /games/{slug})
+$r->add('GET', '/games', [G::class, 'index']);
+$r->add('POST', '/games/adult-consent', [G::class, 'adultConsent']);
+$r->add('GET', '/games/sessions', [G::class, 'sessions']);
+$r->add('POST', '/games/sessions', [G::class, 'start']);
+$r->add('GET', '/games/sessions/{id}', [G::class, 'showSession']);
+$r->add('POST', '/games/sessions/{id}/join', [G::class, 'join']);
+$r->add('POST', '/games/sessions/{id}/decline', [G::class, 'decline']);
+$r->add('POST', '/games/sessions/{id}/answer', [G::class, 'answer']);
+$r->add('POST', '/games/sessions/{id}/skip', [G::class, 'skip']);
+$r->add('POST', '/games/sessions/{id}/next', [G::class, 'next']);
+$r->add('POST', '/games/sessions/{id}/judge', [G::class, 'judge']);
+$r->add('POST', '/games/sessions/{id}/stop', [G::class, 'stop']);
+$r->add('DELETE', '/games/custom-questions/{id}', [G::class, 'deleteCustom']);
+$r->add('GET', '/games/{slug}', [G::class, 'show']);
+$r->add('GET', '/games/{slug}/custom-questions', [G::class, 'listCustom']);
+$r->add('POST', '/games/{slug}/custom-questions', [G::class, 'addCustom']);
+
+// Daily question
+$r->add('GET', '/daily', [G::class, 'daily']);
+$r->add('POST', '/daily', [G::class, 'answerDaily']);
+$r->add('GET', '/daily/history', [G::class, 'dailyHistory']);
+
+// Store and payments
+$r->add('GET', '/store/products', [St::class, 'products']);
+$r->add('POST', '/store/orders', [St::class, 'createOrder']);
+$r->add('POST', '/store/orders/{id}/verify', [St::class, 'verify']);
+$r->add('GET', '/store/purchases', [St::class, 'purchases']);
+$r->add('POST', '/store/restore', [St::class, 'restore']);
+$r->add('POST', '/webhooks/razorpay', [St::class, 'webhook'], false);
+
+// Themes and preferences
+$r->add('GET', '/themes', [T::class, 'index']);
+$r->add('GET', '/me/preferences', [T::class, 'preferences']);
+$r->add('PATCH', '/me/preferences', [T::class, 'update']);
+
+// Long-distance hub and shared space
+$r->add('GET', '/home', [H::class, 'home']);
+$r->add('POST', '/taps', [H::class, 'tap']);
+$r->add('GET', '/taps', [H::class, 'taps']);
+$r->add('GET', '/moods', [H::class, 'moods']);
+$r->add('POST', '/moods', [H::class, 'setMood']);
+$r->add('GET', '/notes', [H::class, 'notes']);
+$r->add('POST', '/notes', [H::class, 'createNote']);
+$r->add('GET', '/notes/{id}', [H::class, 'openNote']);
+$r->add('PATCH', '/notes/{id}', [H::class, 'updateNote']);
+$r->add('DELETE', '/notes/{id}', [H::class, 'deleteNote']);
+$r->add('GET', '/hub/{slug}', [H::class, 'list']);
+$r->add('POST', '/hub/{slug}', [H::class, 'create']);
+$r->add('PATCH', '/hub/{slug}/{id}', [H::class, 'update']);
+$r->add('DELETE', '/hub/{slug}/{id}', [H::class, 'delete']);
 
 // Safety
 $r->add('POST', '/reports', [R::class, 'store']);

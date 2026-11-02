@@ -297,8 +297,8 @@ final class CoupleController
 
     private function assertCanPair(array $user): void
     {
-        if ($user['email_verified_at'] === null) {
-            throw new ApiException(403, 'email_not_verified', 'Verify your email before connecting with a partner.');
+        if ($user['email_verified_at'] === null && $user['phone_verified_at'] === null) {
+            throw new ApiException(403, 'email_not_verified', 'Verify your email or phone before connecting with a partner.');
         }
         if ($user['active_couple_id'] !== null) {
             throw new ApiException(409, 'already_paired', 'You are already connected with a partner.');

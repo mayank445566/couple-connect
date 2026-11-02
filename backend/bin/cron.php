@@ -52,3 +52,13 @@ Database::run('DELETE FROM user_codes WHERE expires_at < UTC_TIMESTAMP() - INTER
 Database::run("UPDATE pair_requests SET status = 'expired' WHERE status IN ('open','pending_approval') AND expires_at <= UTC_TIMESTAMP()");
 Database::run('DELETE FROM auth_tokens WHERE (revoked_at IS NOT NULL AND revoked_at < UTC_TIMESTAMP() - INTERVAL 30 DAY) OR expires_at < UTC_TIMESTAMP() - INTERVAL 30 DAY');
 Database::run('DELETE FROM couple_events WHERE created_at < UTC_TIMESTAMP() - INTERVAL 30 DAY LIMIT 5000');
+
+// 5. Scheduled love letters: announce when their delivery time arrives
+foreach (Database::all('SELECT id, couple_id, author_id FROM notes WHERE deliver_at IS NOT NULL AND deliver_at <= UTC_TIMESTAMP() AND announced_at IS NULL LIMIT 200') as $n) {
+    Database::run('UPDATE notes SET announced_at = UTC_TIMESTAMP() WHERE id = ?', [$n['id']]);
+    Events::emit((int)$n['couple_id'], (int)$n['author_id'], 'note.created', ['id' => (int)$n['id'], 'kind' => 'letter', 'scheduled' => true]);
+}
+
+// 6. Abandoned game invites expire after 24 hours; finished/old OTPs and webhooks are trimmed
+Database::run("UPDATE game_sessions SET status = 'stopped' WHERE status = 'invited' AND created_at < UTC_TIMESTAMP() - INTERVAL 24 HOUR");
+Database::run('DELETE FROM phone_otps WHERE expires_at < UTC_TIMESTAMP() - INTERVAL 1 DAY');

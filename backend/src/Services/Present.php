@@ -27,6 +27,7 @@ final class Present
             'bio' => $u['bio'],
             'avatar_url' => self::mediaUrl($u['avatar_media_id'] ? (int)$u['avatar_media_id'] : null),
             'email_verified' => $u['email_verified_at'] !== null,
+            'phone_verified' => $u['phone_verified_at'] !== null,
             'paired' => $u['active_couple_id'] !== null,
             'couple_id' => $u['active_couple_id'] !== null ? (int)$u['active_couple_id'] : null,
             'privacy' => [
