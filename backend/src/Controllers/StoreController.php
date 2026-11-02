@@ -205,7 +205,7 @@ final class StoreController
             if (!$o || $o['status'] === 'refunded') {
                 return;
             }
-            Database::run("UPDATE orders SET status = 'refunded' WHERE id = ?", [$orderId]);
+            Database::run("UPDATE orders SET status = 'refunded', refunded_at = COALESCE(refunded_at, UTC_TIMESTAMP()) WHERE id = ?", [$orderId]);
             Database::run('UPDATE entitlements SET revoked_at = UTC_TIMESTAMP() WHERE order_id = ?', [$orderId]);
         });
     }

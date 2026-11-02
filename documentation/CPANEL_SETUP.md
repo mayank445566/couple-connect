@@ -58,6 +58,14 @@ php bin/seed.php
 
 Without Terminal: open phpMyAdmin, select the database, **Import** each file in `database/migrations/` in order (001, 002, ...). The seed step needs PHP, so use cPanel's Terminal or a one-off cron job (`php /home/USER/couple-connect/backend/bin/seed.php`) for it.
 
+## 5a. Admin account
+
+```
+php bin/admin.php create you@yourdomain.com "Your Name" owner
+```
+
+Sign in at `https://api.yourdomain.com/admin` with the temporary password it prints, then set your password and two-step sign-in. See `documentation/ADMIN_PANEL.md`.
+
 ## 5b. Payments and SMS
 
 Follow `documentation/PAYMENTS.md` to add Razorpay keys and the webhook. For phone signup set `SMS_DRIVER` (`msg91` or `twilio`) and its keys; Indian numbers need a DLT-registered sender and template.

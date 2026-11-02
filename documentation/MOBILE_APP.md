@@ -40,6 +40,7 @@ Without these the app still works; it just can't notify a closed app.
 - Private photos and voice notes are fetched with the token in a request header. Videos and files use a 15-minute signed link from `GET /media/{id}/link`. No permanent media URLs.
 - The Razorpay key in the checkout is the public key ID; the secret stays in the server's `.env`.
 - Chats are encrypted in transit (HTTPS) and media is encrypted at rest on the server. The app does not claim end-to-end encryption.
+- Settings → **Who can see your chats** tells users that moderators see only messages attached to a report, and that an owner can open one couple's chat for up to 24 hours (logged) when illegal activity is suspected or a legal or safety request arrives. Keep this text in line with your privacy policy (see `ADMIN_PANEL.md`).
 
 ## Run it
 
