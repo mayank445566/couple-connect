@@ -7,8 +7,8 @@ A private space for couples: chat, games, long-distance activities and calls.
 | `backend/` | PHP 8.2 REST API for cPanel (no framework, PDO, PHPMailer) | Phase 1: auth, devices, pairing, chat, sync, encrypted media. Phase 2: games engine, 18+ consent, ₹199 Razorpay unlock, themes, long-distance hub, phone OTP |
 | `database/` | Migrations (`backend/bin/migrate.php`) and starter content: 31 games, 300 questions, 14 themes (`backend/bin/seed.php`) | |
 | `tests/` | End-to-end API tests with real accounts | Phase 1: 95 checks, Phase 2: 105 checks, all passing |
-| `documentation/` | API reference and cPanel deployment guide | |
-| `mobile-app/` | React Native (Expo) Android app | Phase 3 |
+| `documentation/` | API reference, cPanel deployment, payments, mobile app build guide | |
+| `mobile-app/` | React Native (Expo SDK 58) Android app, also runs on web | Phase 3: every screen for the Phase 1 and 2 API. 19-step browser test passing |
 | `relay/` | WebSocket relay + coturn config for the VPS | Phase 4 |
 
 Start with `documentation/CPANEL_SETUP.md`.
@@ -20,4 +20,11 @@ cd backend && composer install && cp .env.example .env   # set APP_ENV=local, MA
 php bin/migrate.php && php bin/seed.php
 php -S 127.0.0.1:8088 -t public public/index.php
 API=http://127.0.0.1:8088 php ../tests/api_test.php && API=http://127.0.0.1:8088 php ../tests/phase2_test.php
+```
+
+Mobile app (see `documentation/MOBILE_APP.md`):
+
+```
+cd mobile-app && npm install
+EXPO_PUBLIC_API_URL=http://127.0.0.1:8088 npx expo start --web     # quickest way to try it
 ```

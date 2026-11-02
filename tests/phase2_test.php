@@ -282,6 +282,8 @@ $r = call('POST', '/store/restore', null, $A);
 check('premium revoked after refund', $r['json']['data']['entitlements']['premium']['owned'] === false, $r['json']);
 $r = call('PATCH', '/me/preferences', ['theme_slug' => 'romantic-pink'], $A);
 check('premium theme locked again', $r['status'] === 402);
+$r = call('PATCH', '/me/preferences', ['reset_colors' => true], $A);
+check('custom colours can be reset without premium', $r['status'] === 200 && $r['json']['data']['bubble_mine'] === null, $r['json']);
 
 echo "Long-distance hub\n";
 $r = call('POST', '/taps', ['kind' => 'hug'], $A);
