@@ -20,7 +20,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.yourdomain.com",
+        "EXPO_PUBLIC_API_URL": "https://chat.netsarthi.com",
         "EXPO_PUBLIC_BILLING": "razorpay"
       }
     },
@@ -31,7 +31,7 @@
         "credentialsSource": "remote"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.yourdomain.com",
+        "EXPO_PUBLIC_API_URL": "https://chat.netsarthi.com",
         "EXPO_PUBLIC_BILLING": "play"
       }
     }
