@@ -2,3 +2,5 @@ backend/.env
 backend/storage/media/
 backend/storage/logs/
 *.zip
+backend/storage/cache/
+/*.png
