@@ -59,6 +59,12 @@ foreach (['pdo_mysql', 'sodium', 'fileinfo', 'mbstring', 'gd', 'curl', 'openssl'
 $checks[] = ['Composer packages (vendor/) uploaded', is_file(BASE_PATH . '/vendor/autoload.php'), 'Upload the full package, including the backend/vendor folder.'];
 $checks[] = ['Backend folder writable (to save .env)', is_writable(BASE_PATH), 'Give the backend folder permission 755 in File Manager.'];
 $checks[] = ['Migrations found', (bool)glob(dirname(BASE_PATH) . '/database/migrations/*.sql') || (bool)glob(BASE_PATH . '/database/migrations/*.sql'), 'Upload the database folder next to backend.'];
+$docRoot = realpath((string)($_SERVER['DOCUMENT_ROOT'] ?? '')) ?: '';
+$checks[] = [
+    'Document root is backend/public',
+    $docRoot === '' || $docRoot === realpath(__DIR__),
+    'The web address must point at the public folder itself, or anyone can download .env. Move the couple-connect folder to your home folder (/home/USER), then in cPanel → Domains set this domain\'s Document Root to couple-connect/backend/public.',
+];
 $checks[] = ['HTTPS', $https, 'Turn on AutoSSL (cPanel → SSL/TLS Status) and open this page with https://. Required in production.'];
 $blocking = array_filter($checks, fn($c) => !$c[1] && $c[0] !== 'HTTPS');
 
