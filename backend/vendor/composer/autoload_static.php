@@ -7,12 +7,14 @@ namespace Composer\Autoload;
 class ComposerStaticInitf45324cc0582457b755c3cffec2a4e5c
 {
     public static $files = array (
+        '3109cb1a231dcd04bee1f9f620d46975' => __DIR__ . '/..' . '/paragonie/sodium_compat/autoload.php',
         '3f94917db3ee6986cf79b22e42ba24e1' => __DIR__ . '/../..' . '/src/Core/Http.php',
     );
 
     public static $prefixLengthsPsr4 = array (
         'P' => 
         array (
+            'ParagonIE\\Sodium\\' => 17,
             'PHPMailer\\PHPMailer\\' => 20,
         ),
         'A' => 
@@ -22,6 +24,10 @@ class ComposerStaticInitf45324cc0582457b755c3cffec2a4e5c
     );
 
     public static $prefixDirsPsr4 = array (
+        'ParagonIE\\Sodium\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/paragonie/sodium_compat/namespaced',
+        ),
         'PHPMailer\\PHPMailer\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpmailer/phpmailer/src',

@@ -57,7 +57,7 @@ final class MediaVault
         fclose($in);
         fclose($out);
         rename($tmp, self::path($storageName));
-        sodium_memzero($key);
+        self::wipe($key);
     }
 
     /** Writes plaintext bytes [$start, $end] (inclusive) to output. */
@@ -89,7 +89,17 @@ final class MediaVault
             flush();
         }
         fclose($fh);
-        sodium_memzero($key);
+        self::wipe($key);
+    }
+
+    /** Native sodium can wipe the key from memory; the pure-PHP fallback cannot, so just drop the reference. */
+    private static function wipe(string &$key): void
+    {
+        if (extension_loaded('sodium')) {
+            sodium_memzero($key);
+        } else {
+            $key = '';
+        }
     }
 
     public static function delete(string $storageName): void

@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'ParagonIE\\Sodium\\' => array($vendorDir . '/paragonie/sodium_compat/namespaced'),
     'PHPMailer\\PHPMailer\\' => array($vendorDir . '/phpmailer/phpmailer/src'),
     'App\\' => array($baseDir . '/src'),
 );

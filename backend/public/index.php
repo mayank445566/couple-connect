@@ -6,6 +6,21 @@ use App\Core\Config;
 use App\Core\Request;
 use App\Core\Response;
 
+// Not installed yet: point to the web installer instead of failing with a bare 500
+if (!is_file(dirname(__DIR__) . '/.env')) {
+    http_response_code(503);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    $installer = is_file(__DIR__ . '/install.php');
+    echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Setup needed</title>'
+        . '<body style="font-family:system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem">'
+        . '<h1>Setup needed</h1>'
+        . ($installer
+            ? '<p>This server is not configured yet. <a href="install.php">Open the installer</a> to finish setup.</p>'
+            : '<p>This server has no <code>.env</code> file. Upload <code>public/install.php</code> again or create <code>.env</code> from <code>.env.example</code>.</p>');
+    exit;
+}
+
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 header('X-Content-Type-Options: nosniff');
