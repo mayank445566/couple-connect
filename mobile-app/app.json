@@ -84,7 +84,7 @@
     ],
     "scheme": "coupleconnect",
     "extra": {
-      "apiUrl": "https://api.example.com",
+      "apiUrl": "https://chat.netsarthi.com",
       "router": {},
       "eas": {
         "projectId": "e460b98d-a30c-4fef-a9bf-348c67272e2d"
@@ -92,6 +92,14 @@
     },
     "experiments": {
       "typedRoutes": false
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e460b98d-a30c-4fef-a9bf-348c67272e2d",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

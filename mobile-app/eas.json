@@ -12,7 +12,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "http://10.0.2.2:8088"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -22,7 +23,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://chat.netsarthi.com",
         "EXPO_PUBLIC_BILLING": "razorpay"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
@@ -33,7 +35,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://chat.netsarthi.com",
         "EXPO_PUBLIC_BILLING": "play"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
