@@ -42,10 +42,12 @@ final class GameController
         $ent = Entitlements::forUser($user);
         $games = Database::all('SELECT * FROM games WHERE enabled = 1 ORDER BY section, sort_order, id');
         $packs = Database::all(
-            'SELECT p.id, p.game_id, p.title, p.title_hi, p.level, p.is_premium, p.couple_id, COUNT(q.id) AS questions
-               FROM question_packs p LEFT JOIN questions q ON q.pack_id = p.id AND q.enabled = 1
+            // Count in a subquery: servers with ONLY_FULL_GROUP_BY (MariaDB on cPanel) reject GROUP BY p.id here
+            'SELECT p.id, p.game_id, p.title, p.title_hi, p.level, p.is_premium, p.couple_id,
+                    (SELECT COUNT(*) FROM questions q WHERE q.pack_id = p.id AND q.enabled = 1) AS questions
+               FROM question_packs p
               WHERE p.enabled = 1 AND (p.couple_id IS NULL OR p.couple_id = ?)
-              GROUP BY p.id ORDER BY p.sort_order, p.id',
+              ORDER BY p.sort_order, p.id',
             [$user['active_couple_id'] ?? 0]
         );
         $byGame = [];
