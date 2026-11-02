@@ -79,6 +79,18 @@ export default function Chat() {
     }
   };
 
+  const startCall = async (kind: 'audio' | 'video') => {
+    try {
+      const call = await api<{ id: number }>('POST', '/calls', { kind });
+      router.push(`/call/${call.id}`);
+    } catch (e) {
+      // Already in a call (maybe on another device): open it instead
+      const existing = (e as any)?.fields?.call_id;
+      if (existing) router.push(`/call/${existing}`);
+      else Alert.alert('Could not call', errorText(e));
+    }
+  };
+
   const onLongPress = useCallback((m: Message) => {
     Haptics.selectionAsync().catch(() => {});
     setSel(m);
@@ -116,6 +128,12 @@ export default function Chat() {
           <T weight="700" size={16}>{p?.display_name ?? 'Partner'}</T>
           <T size={12} color={partner.typing ? c.primary : c.muted}>{offline ? 'Waiting for connection…' : status}</T>
         </View>
+        <Pressable onPress={() => startCall('audio')} hitSlop={10} accessibilityLabel="Voice call">
+          <Ionicons name="call-outline" size={22} color={c.text} />
+        </Pressable>
+        <Pressable onPress={() => startCall('video')} hitSlop={10} accessibilityLabel="Video call" style={{ marginHorizontal: 8 }}>
+          <Ionicons name="videocam-outline" size={24} color={c.text} />
+        </Pressable>
         <Pressable onPress={() => router.push('/chat-search')} hitSlop={10} accessibilityLabel="Search, starred and pinned messages">
           <Ionicons name="search" size={22} color={c.text} />
         </Pressable>

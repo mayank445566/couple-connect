@@ -9,7 +9,8 @@ import { useAuth } from './AuthProvider';
  * - Polls GET /sync with a cursor (3 s while the chat is open, 15 s otherwise, paused in background).
  * - Messages typed offline go to a persisted outbox and are retried with the same client_id,
  *   so the server never stores a duplicate.
- * - Phase 4 adds a WebSocket nudge that triggers syncNow() instantly.
+ * - When the relay is configured, a WebSocket nudge triggers syncNow() instantly and polling slows down.
+ *   The relay also carries live partner messages ("peer"), used by the drawing board.
  */
 
 export type OutboxItem = {
@@ -47,6 +48,7 @@ type SyncState = {
   syncNow: () => void;
   typing: () => void;
   on: (prefix: string, fn: EventListener) => () => void;
+  relay: { connected: boolean; partnerLive: boolean; sendPeer: (d: Record<string, unknown>) => boolean };
 };
 
 const Ctx = createContext<SyncState | null>(null);
@@ -75,6 +77,11 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const outboxRef = useRef(outbox);
   outboxRef.current = outbox;
   const lastTyping = useRef(0);
+  const ws = useRef<WebSocket | null>(null);
+  const [relayUp, setRelayUp] = useState(false);
+  const [partnerLive, setPartnerLive] = useState(false);
+  const relayUpRef = useRef(false);
+  relayUpRef.current = relayUp;
 
   const merge = useCallback((list: Message[], removed: number[] = []) => {
     if (!list.length && !removed.length) return;
@@ -194,7 +201,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     timer.current = setTimeout(async () => {
       await tick();
       schedule();
-    }, chatOpen.current ? 3000 : 15000);
+    }, relayUpRef.current ? (chatOpen.current ? 15000 : 30000) : chatOpen.current ? 3000 : 15000);
   }, [paired, tick]);
 
   const syncNow = useCallback(() => {
@@ -244,6 +251,71 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     });
     return () => sub.remove();
   }, [syncNow]);
+
+  // Relay: instant nudges and live partner messages. Polling keeps working if it is down.
+  useEffect(() => {
+    if (!paired) return;
+    let stopped = false;
+    let retry: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+    const connect = async () => {
+      if (stopped || !appActive.current) return;
+      try {
+        const t = await api<{ url: string | null; ticket: string | null }>('POST', '/realtime/ticket');
+        if (!t.url || !t.ticket || stopped) return; // relay not configured on this server
+        const sock = new WebSocket(`${t.url}?ticket=${encodeURIComponent(t.ticket)}`);
+        ws.current = sock;
+        sock.onopen = () => {
+          attempt = 0;
+          setRelayUp(true);
+          syncNow();
+        };
+        sock.onmessage = (ev) => {
+          let m: any;
+          try {
+            m = JSON.parse(String(ev.data));
+          } catch {
+            return;
+          }
+          if (m.t === 'nudge') {
+            if (m.type === 'call.signal') emit({ id: 0, type: 'call.signal', actor_id: null, payload: { call_id: m.call_id }, at: new Date().toISOString() });
+            else syncNow();
+          } else if (m.t === 'peer') emit({ id: 0, type: 'peer.' + String(m.d?.kind ?? 'msg'), actor_id: null, payload: m.d, at: new Date().toISOString() });
+          else if (m.t === 'hello') setPartnerLive(!!m.partner_online);
+          else if (m.t === 'presence') setPartnerLive(!!m.online);
+        };
+        sock.onclose = () => {
+          if (ws.current === sock) ws.current = null;
+          setRelayUp(false);
+          setPartnerLive(false);
+          if (!stopped) retry = setTimeout(connect, Math.min(30000, 1000 * 2 ** attempt++));
+        };
+      } catch {
+        if (!stopped) retry = setTimeout(connect, Math.min(30000, 1000 * 2 ** attempt++));
+      }
+    };
+    connect();
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && !ws.current) connect();
+      if (st !== 'active') ws.current?.close();
+    });
+    return () => {
+      stopped = true;
+      if (retry) clearTimeout(retry);
+      sub.remove();
+      ws.current?.close();
+      ws.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paired, me?.couple_id]);
+
+  const sendPeer = useCallback((d: Record<string, unknown>) => {
+    const sock = ws.current;
+    if (!sock || sock.readyState !== 1) return false;
+    sock.send(JSON.stringify({ t: 'peer', d }));
+    return true;
+  }, []);
+  const relay = useMemo(() => ({ connected: relayUp, partnerLive, sendPeer }), [relayUp, partnerLive, sendPeer]);
 
   const setChatOpen = useCallback(
     (open: boolean) => {
@@ -305,8 +377,8 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const messages = useMemo(() => Object.values(byId).sort((a, b) => b.id - a.id), [byId]);
 
   const value = useMemo(
-    () => ({ messages, outbox, partner, unread, hasOlder, loaded, offline, setChatOpen, loadOlder, send, retry, discard, upsert, remove, syncNow, typing, on }),
-    [messages, outbox, partner, unread, hasOlder, loaded, offline, setChatOpen, loadOlder, send, retry, discard, upsert, remove, syncNow, typing, on],
+    () => ({ messages, outbox, partner, unread, hasOlder, loaded, offline, setChatOpen, loadOlder, send, retry, discard, upsert, remove, syncNow, typing, on, relay }),
+    [messages, outbox, partner, unread, hasOlder, loaded, offline, setChatOpen, loadOlder, send, retry, discard, upsert, remove, syncNow, typing, on, relay],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

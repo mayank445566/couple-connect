@@ -62,3 +62,8 @@ foreach (Database::all('SELECT id, couple_id, author_id FROM notes WHERE deliver
 // 6. Abandoned game invites expire after 24 hours; finished/old OTPs and webhooks are trimmed
 Database::run("UPDATE game_sessions SET status = 'stopped' WHERE status = 'invited' AND created_at < UTC_TIMESTAMP() - INTERVAL 24 HOUR");
 Database::run('DELETE FROM phone_otps WHERE expires_at < UTC_TIMESTAMP() - INTERVAL 1 DAY');
+
+// Calls: ringing calls nobody answered become missed; drop signalling data of finished calls
+\App\Controllers\CallController::expireRinging();
+Database::run("DELETE s FROM call_signals s JOIN calls c ON c.id = s.call_id WHERE c.status NOT IN ('ringing','active')");
+

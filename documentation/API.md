@@ -225,3 +225,35 @@ Entitlements: `{"premium": {"owned": true, "via_partner": false}, "themes": {...
 | PATCH / DELETE | /hub/{list}/{id} | same fields | Either partner can edit shared lists. |
 
 New sync event types: `game.invited`, `game.updated`, `daily.answered`, `premium.unlocked`, `tap.sent`, `mood.updated`, `note.created`, `note.opened`, `hub.changed`.
+
+---
+
+# Phase 4 endpoints
+
+## Real-time relay and push
+
+| Method | Path | Body | Notes |
+| --- | --- | --- | --- |
+| POST | /realtime/ticket | – | `{url, ticket, expires_at}`: connect to `url?ticket=...` within 5 minutes. `url` is null when no relay is configured (keep polling). |
+| POST | /me/push-token | `token, platform?` | FCM device token for this signed-in session. Signing out of the session stops its pushes. |
+| DELETE | /me/push-token | – | Stop pushes to this device. |
+
+Relay messages to the app: `{"t":"hello","partner_online":true}`, `{"t":"presence","online":false}`, `{"t":"nudge","type":"message.created","event_id":120}` (call `GET /sync`), `{"t":"nudge","type":"call.signal","call_id":5}` (fetch call signals), `{"t":"peer","d":{...}}` (live data from the partner). The app may send `{"t":"peer","d":{...}}` (8 KB max, 50 per second) and `{"t":"ping"}`.
+
+Push rules: the partner gets a push for new messages, love taps, game invites, delivered letters, incoming and missed calls. Message text is included only if they enabled `show_preview`. 18+ games are never named. Category switches and quiet hours apply (calls ignore quiet hours). No push while the partner has the app open (seen in the last 20 seconds), except calls.
+
+## Calls
+
+| Method | Path | Body | Notes |
+| --- | --- | --- | --- |
+| POST | /calls | `kind` (audio/video) | 201 → call + `ice_servers`. Emits `call.ringing`. 409 `call_in_progress` (with `fields.call_id`) if one is ringing or active. Rings for 45 s, then `missed`. |
+| GET | /calls | – | Last 50 calls. |
+| GET | /calls/{id} | – | `{id, kind, status (ringing/active/ended/declined/missed/cancelled), outgoing, caller_id, callee_id, end_reason, created_at, answered_at, ended_at, duration_seconds}` |
+| POST | /calls/{id}/accept | – | Callee only → call + `ice_servers`. Emits `call.accepted`. |
+| POST | /calls/{id}/decline | – | Callee only. |
+| POST | /calls/{id}/end | `reason?` (hangup/failed/network) | Either side. Caller hanging up while ringing = `cancelled` (partner gets a missed-call notice). Deletes the call's signalling data. |
+| POST | /calls/{id}/signal | `kind` (offer/answer/ice/renegotiate), `payload` | ICE may be an array of up to 50 candidates. Nudges the partner through the relay. |
+| GET | /calls/{id}/signals | `?after=<id>` | Partner's signals after an id, plus the call `status`. Poll every second during setup if the relay is not connected. |
+| GET | /calls/turn | – | `{ice_servers, ttl}`: STUN plus TURN credentials valid for `TURN_TTL_SECONDS` (coturn REST API format). |
+
+New sync event types: `call.ringing`, `call.accepted`, `call.ended` (`reason`: declined, cancelled, missed, hangup, failed, network).
