@@ -8,11 +8,12 @@ import { PlusJakartaSans_700Bold } from '@expo-google-fonts/plus-jakarta-sans/70
 import { PlusJakartaSans_800ExtraBold } from '@expo-google-fonts/plus-jakarta-sans/800ExtraBold';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Background } from '../components/Background';
+import { loadLang } from '../lib/i18n';
 import { AuthProvider, useAuth } from '../state/AuthProvider';
 import { SyncProvider } from '../state/SyncProvider';
 import { ThemeProvider, useTheme } from '../state/ThemeProvider';
@@ -53,6 +54,10 @@ function Guard() {
 function Shell() {
   const { ready } = useAuth();
   const { c } = useTheme();
+  const [langReady, setLangReady] = useState(false);
+  useEffect(() => {
+    loadLang().finally(() => setLangReady(true));
+  }, []);
   // Bundled fonts load from the app package in a few milliseconds; if one fails the system font is used
   const [fontsLoaded, fontError] = useFonts({
     Fraunces_600SemiBold,
@@ -63,7 +68,7 @@ function Shell() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   });
-  if (!ready || (!fontsLoaded && !fontError)) {
+  if (!ready || !langReady || (!fontsLoaded && !fontError)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background }}>
         <ActivityIndicator color={c.primary} size="large" />

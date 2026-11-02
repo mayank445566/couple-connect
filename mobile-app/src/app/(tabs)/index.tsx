@@ -13,6 +13,8 @@ import { useAuth } from '../../state/AuthProvider';
 import { daysUntil, moodOf, tapLabel, TAPS } from '../../lib/constants';
 import { useLoad } from '../../lib/useLoad';
 import { useSync, useSyncEvent } from '../../state/SyncProvider';
+import { t } from '../../lib/i18n';
+import { play } from '../../lib/sounds';
 import { useTheme } from '../../state/ThemeProvider';
 
 type Home = {
@@ -60,7 +62,10 @@ export default function HomeTab() {
   useSyncEvent('tap.', (e) => {
     reload();
     // A tap from my partner floats onto the screen
-    if (e.actor_id !== me?.id) hearts.fire(tapLabel(e.payload?.kind ?? '').emoji, 0.5, 7);
+    if (e.actor_id !== me?.id) {
+      hearts.fire(tapLabel(e.payload?.kind ?? '').emoji, 0.5, 7);
+      play('heart');
+    }
   });
   useSyncEvent('mood.', () => reload());
   useSyncEvent('daily.', () => reload());
@@ -98,6 +103,7 @@ export default function HomeTab() {
   const tap = async (kind: string, index: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     hearts.fire(tapLabel(kind).emoji, Math.min(0.85, 0.12 + index * 0.2));
+    play('heart');
     try {
       await api('POST', '/taps', { kind });
       setSent(kind);
@@ -146,7 +152,7 @@ export default function HomeTab() {
               </View>
               <Row style={{ justifyContent: 'space-between' }}>
                 <T size={12} color="#ffffffCC">since {new Date(data.relationship_start).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</T>
-                <T size={12} color="#ffffffCC" weight="600">{ms.days.toLocaleString()} days in {ms.in_days}</T>
+                <T size={12} color="#ffffffCC" weight="600">{t('{n} days in {d}', { n: ms.days.toLocaleString(), d: ms.in_days })}</T>
               </Row>
             </View>
           ) : null}

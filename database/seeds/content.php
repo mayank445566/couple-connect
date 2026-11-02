@@ -407,4 +407,37 @@ $products = [
   ['sku' => 'premium_lifetime', 'title' => 'Couple Connect Premium', 'description' => 'Lifetime access to 18+ games, premium packs and premium themes. One-time payment.', 'price_paise' => 19900, 'grants' => ['premium', 'themes'], 'play_product_id' => 'premium_lifetime'],
 ];
 
-return ['games' => $games, 'themes' => $themes, 'products' => $products];
+// More packs and new games live in seeds/more/*.php. An entry with 'game' adds packs to an existing
+// game (or questions to an existing pack with the same slug); an entry with 'slug' is a whole new game.
+foreach (glob(__DIR__ . '/more/[!_]*.php') ?: [] as $moreFile) {
+    foreach (require $moreFile as $entry) {
+        if (isset($entry['game'])) {
+            foreach ($games as &$g) {
+                if ($g['slug'] !== $entry['game']) {
+                    continue;
+                }
+                foreach ($entry['packs'] as $newPack) {
+                    $found = false;
+                    foreach ($g['packs'] as &$p) {
+                        if ($p['slug'] === $newPack['slug']) {
+                            $p['questions'] = array_merge($p['questions'], $newPack['questions']);
+                            $found = true;
+                        }
+                    }
+                    unset($p);
+                    if (!$found) {
+                        $g['packs'][] = $newPack;
+                    }
+                }
+            }
+            unset($g);
+        } else {
+            $games[] = $entry;
+        }
+    }
+}
+
+// Hindi for the original starter content above (game names, packs, questions, options)
+$hi = is_file(__DIR__ . '/hi.php') ? require __DIR__ . '/hi.php' : [];
+
+return ['games' => $games, 'themes' => $themes, 'products' => $products, 'hi' => $hi];

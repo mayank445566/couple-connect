@@ -73,7 +73,7 @@ export const MessageBubble = memo(function MessageBubble({ m, replyTo, onLongPre
         {replyTo ? (
           <Pressable onPress={() => onReplyPress?.(replyTo.id)} style={{ borderLeftWidth: 3, borderLeftColor: fg + '88', paddingLeft: 8, paddingVertical: 2, marginHorizontal: isMedia ? 6 : 0, marginTop: isMedia ? 6 : 0 }}>
             <T size={11} weight="700" color={fg + 'CC'}>{replyTo.mine ? 'You' : 'Partner'}</T>
-            <T size={12} color={fg + 'CC'} numberOfLines={2}>{preview(replyTo)}</T>
+            <T raw size={12} color={fg + 'CC'} numberOfLines={2}>{preview(replyTo)}</T>
           </Pressable>
         ) : null}
 
@@ -94,13 +94,13 @@ export const MessageBubble = memo(function MessageBubble({ m, replyTo, onLongPre
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                 <Ionicons name="document-attach-outline" size={28} color={fg} />
                 <View style={{ flexShrink: 1 }}>
-                  <T color={fg} weight="600" numberOfLines={1}>{media.name ?? 'File'}</T>
+                  <T raw color={fg} weight="600" numberOfLines={1}>{media.name ?? 'File'}</T>
                   <T size={11} color={fg + 'AA'}>{(media.size / 1024 / 1024).toFixed(1)} MB</T>
                 </View>
               </View>
             ) : null}
             {m.type === 'sticker' ? <T size={48}>{m.meta?.emoji ?? '💖'}</T> : null}
-            {m.body && m.type !== 'sticker' ? <T color={fg} size={15} style={{ paddingHorizontal: isMedia ? 8 : 0 }}>{m.body}</T> : null}
+            {m.body && m.type !== 'sticker' ? <T raw color={fg} size={15} style={{ paddingHorizontal: isMedia ? 8 : 0 }}>{m.body}</T> : null}
           </>
         )}
 
@@ -134,7 +134,7 @@ export function PendingBubble({ item, onRetry, onDiscard }: { item: OutboxItem; 
         {c.bubbleGrad ? <LinearGradient colors={c.bubbleGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} /> : null}
         {item.local_uri && item.type === 'image' ? <Image source={{ uri: item.local_uri }} style={{ width: 200, height: 200, borderRadius: 14 }} /> : null}
         {item.type !== 'text' && !item.local_uri ? <T color={fg}>{preview({ type: item.type, body: null })}</T> : null}
-        {item.body ? <T color={fg}>{item.body}</T> : null}
+        {item.body ? <T raw color={fg}>{item.body}</T> : null}
         <View style={{ flexDirection: 'row', alignSelf: 'flex-end', gap: 4, alignItems: 'center' }}>
           <Ionicons name={item.status === 'failed' ? 'alert-circle' : 'time-outline'} size={13} color={item.status === 'failed' ? '#FFD1D1' : fg + 'AA'} />
           <T size={10} color={fg + 'AA'}>{item.status === 'failed' ? 'Not sent' : 'Sending…'}</T>

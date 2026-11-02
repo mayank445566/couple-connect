@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
-import { Animated, ScrollView, View } from 'react-native';
+import { Animated, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFloatingHearts, useHeartbeat } from '../../components/FloatingHearts';
 import { Button, IconBubble, IconName, Muted, T } from '../../components/ui';
+import { LANGS, setLang, useLang } from '../../lib/i18n';
 import { useTheme } from '../../state/ThemeProvider';
 
 const FEATURES: [IconName, string, string][] = [
@@ -19,6 +20,7 @@ export default function Welcome() {
   const { c } = useTheme();
   const beat = useHeartbeat();
   const hearts = useFloatingHearts();
+  const lang = useLang();
 
   // A few hearts drift up when the screen opens
   useEffect(() => {
@@ -34,6 +36,14 @@ export default function Welcome() {
           <View pointerEvents="none" style={{ position: 'absolute', width: 300, height: 300, borderRadius: 150, backgroundColor: '#FFFFFF14', top: -120, right: -90 }} />
           <View pointerEvents="none" style={{ position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: '#FFFFFF10', bottom: -60, left: -50 }} />
           <SafeAreaView edges={['top']} style={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 48, paddingBottom: 44, gap: 10 }}>
+            {/* Language switch, top right */}
+            <View style={{ position: 'absolute', top: 12, right: 16, flexDirection: 'row', backgroundColor: '#FFFFFF26', borderRadius: 999, padding: 3, marginTop: 30 }}>
+              {LANGS.map((l) => (
+                <Pressable key={l.code} onPress={() => setLang(l.code)} accessibilityRole="button" style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: lang === l.code ? '#fff' : 'transparent' }}>
+                  <T raw size={12.5} weight="700" color={lang === l.code ? c.primary : '#fff'}>{l.name}</T>
+                </Pressable>
+              ))}
+            </View>
             <Animated.View style={{ width: 92, height: 92, borderRadius: 46, backgroundColor: '#FFFFFF2E', alignItems: 'center', justifyContent: 'center', transform: [{ scale: beat }] }}>
               <View style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="heart" size={36} color={c.primary} />

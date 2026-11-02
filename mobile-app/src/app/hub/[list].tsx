@@ -11,6 +11,7 @@ import { fmtDate, toIso } from '../../lib/dates';
 import { useLoad } from '../../lib/useLoad';
 import { useSyncEvent } from '../../state/SyncProvider';
 import { useTheme } from '../../state/ThemeProvider';
+import { t } from '../../lib/i18n';
 
 type Item = Record<string, any> & { id: number; title: string };
 
@@ -29,13 +30,13 @@ export default function HubListScreen() {
       await api('PATCH', `/hub/${list}/${it.id}`, body);
       items.reload();
     } catch (e) {
-      Alert.alert('Could not update', errorText(e));
+      Alert.alert(t('Could not update'), errorText(e));
     }
   };
   const del = (it: Item) =>
-    Alert.alert('Delete?', `"${it.title}" will be removed for both of you.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { try { await api('DELETE', `/hub/${list}/${it.id}`); items.reload(); } catch (e) { Alert.alert('Could not delete', errorText(e)); } } },
+    Alert.alert(t('Delete?'), t('"{title}" will be removed for both of you.', { title: it.title }), [
+      { text: t('Cancel'), style: 'cancel' },
+      { text: t('Delete'), style: 'destructive', onPress: async () => { try { await api('DELETE', `/hub/${list}/${it.id}`); items.reload(); } catch (e) { Alert.alert(t('Could not delete'), errorText(e)); } } },
     ]);
 
   return (
@@ -55,12 +56,12 @@ export default function HubListScreen() {
             ) : null}
             {list === 'countdowns' ? <T size={26}>{it.emoji || '⏳'}</T> : null}
             <View style={{ flex: 1 }}>
-              <T weight="700" style={it.done ? { textDecorationLine: 'line-through', opacity: 0.6 } : undefined}>{it.title}</T>
+              <T weight="700" raw style={it.done ? { textDecorationLine: 'line-through', opacity: 0.6 } : undefined}>{it.title}</T>
               {list === 'countdowns' ? <Muted>{daysUntil(it.target_at) > 0 ? `${daysUntil(it.target_at)} days to go · ${fmtDate(it.target_at)}` : `Reached on ${fmtDate(it.target_at)}`}</Muted> : null}
               {list === 'calendar' ? <Muted>{it.kind} · {fmtDate(it.starts_at, !it.all_day)}{it.repeat_yearly ? ' · every year' : ''}</Muted> : null}
               {list === 'memories' ? <Muted>{it.happened_on}{it.is_milestone ? ' · milestone' : ''}</Muted> : null}
               {it.notes ? <Muted>{it.notes}</Muted> : null}
-              {it.body ? <T size={14}>{it.body}</T> : null}
+              {it.body ? <T raw size={14}>{it.body}</T> : null}
             </View>
             {list === 'memories' ? (
               <Pressable onPress={() => patch(it, { is_favorite: !it.is_favorite })} hitSlop={8} accessibilityLabel="Favorite">

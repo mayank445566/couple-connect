@@ -31,6 +31,7 @@ final class SettingsPage
         return View::render($ctx, 'Settings', 'settings', [
             'toggles' => self::TOGGLES, 'values' => $values, 'packs' => $packs,
             'dailyPack' => Settings::get('daily_question_pack'), 'health' => $this->health(),
+            'pending' => $this->pendingMigrations(),
         ]);
     }
 
@@ -56,6 +57,31 @@ final class SettingsPage
             Audit::log($ctx, 'settings_updated', 'settings', null, $changes);
         }
         throw new Redirect('/admin/settings', $changes ? 'Settings saved.' : 'Nothing changed.');
+    }
+
+    /**
+     * After uploading an update: applies new database migrations and loads new starter content
+     * (games, questions, translations). Safe to run again; nothing a user created is touched.
+     */
+    public function updateDatabase(Ctx $ctx): string
+    {
+        try {
+            $applied = \App\Setup\Installer::migrate();
+            $counts = \App\Setup\Installer::seed();
+        } catch (\Throwable $e) {
+            error_log('[admin update] ' . $e->getMessage());
+            throw new Redirect('/admin/settings', 'Update failed: ' . $e->getMessage(), 'error');
+        }
+        Audit::log($ctx, 'database_updated', 'settings', null, ['migrations' => $applied, 'counts' => $counts]);
+        throw new Redirect('/admin/settings', 'Database is up to date. ' . count($applied) . ' update(s) applied. Questions in the library: ' . (int)($counts['q'] ?? 0) . '.');
+    }
+
+    /** @return string[] */
+    private function pendingMigrations(): array
+    {
+        $files = glob(\App\Setup\Installer::migrationsDir() . '/*.sql') ?: [];
+        $done = Database::run('SELECT version FROM schema_migrations')->fetchAll(\PDO::FETCH_COLUMN);
+        return array_values(array_diff(array_map(fn($f) => basename($f, '.sql'), $files), $done));
     }
 
     public function products(Ctx $ctx): string

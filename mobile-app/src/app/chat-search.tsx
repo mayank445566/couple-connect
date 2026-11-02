@@ -57,7 +57,7 @@ export default function ChatSearch() {
             <Muted>{timeAgo(m.created_at)}</Muted>
           </Row>
           <View>
-            <T>{preview(m)}</T>
+            <T raw>{preview(m)}</T>
           </View>
         </Card>
       ))}

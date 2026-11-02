@@ -8,6 +8,7 @@ import { fmtDate, toIso } from '../lib/dates';
 import { useLoad } from '../lib/useLoad';
 import { useSyncEvent } from '../state/SyncProvider';
 import { useTheme } from '../state/ThemeProvider';
+import { t } from '../lib/i18n';
 
 type Kind = 'letter' | 'note' | 'journal' | 'wish';
 type Note = { id: number; kind: Kind; title: string | null; body: string; from_me: boolean; deliver_at: string | null; opened: boolean; created_at: string };
@@ -32,7 +33,7 @@ export default function Notes() {
       setOpen(await api<Note>('GET', `/notes/${n.id}`));
       if (!n.from_me && !n.opened) data.reload();
     } catch (e) {
-      Alert.alert('Could not open', errorText(e));
+      Alert.alert(t('Could not open'), errorText(e));
     }
   };
 
@@ -42,7 +43,7 @@ export default function Notes() {
         <Header title={open.title || (open.kind === 'letter' ? 'A letter' : 'Note')} onBack={() => setOpen(null)} />
         <Muted>{open.from_me ? 'From you' : 'From your partner'} · {fmtDate(open.created_at)}</Muted>
         <Card>
-          <T size={16} style={{ lineHeight: 24 }}>{open.body}</T>
+          <T raw size={16} style={{ lineHeight: 24 }}>{open.body}</T>
         </Card>
         {open.from_me ? (
           <Button
@@ -54,7 +55,7 @@ export default function Notes() {
                 setOpen(null);
                 data.reload();
               } catch (e) {
-                Alert.alert('Could not delete', errorText(e));
+                Alert.alert(t('Could not delete'), errorText(e));
               }
             }}
           />
@@ -77,7 +78,7 @@ export default function Notes() {
         <Card style={{ borderColor: c.primary, borderWidth: 1 }}>
           <Row>
             <T size={26}>💌</T>
-            <T style={{ flex: 1 }}>{data.data.sealed_letters_waiting} sealed {data.data.sealed_letters_waiting === 1 ? 'letter is' : 'letters are'} waiting for you. They'll open on their delivery date.</T>
+            <T style={{ flex: 1 }}>{t(data.data.sealed_letters_waiting === 1 ? '1 sealed letter is waiting for you. It will open on its delivery date.' : '{n} sealed letters are waiting for you. They\'ll open on their delivery date.', { n: data.data.sealed_letters_waiting })}</T>
           </Row>
         </Card>
       ) : null}
@@ -90,7 +91,7 @@ export default function Notes() {
             <Row>
               <Ionicons name={!n.from_me && !n.opened ? 'mail-unread' : 'mail-open-outline'} size={22} color={c.primary} />
               <View style={{ flex: 1 }}>
-                <T weight="700" numberOfLines={1}>{n.title || n.body.slice(0, 40)}</T>
+                <T raw weight="700" numberOfLines={1}>{n.title || n.body.slice(0, 40)}</T>
                 <Muted>
                   {n.from_me ? 'You' : 'Partner'} · {timeAgo(n.created_at)}
                   {n.from_me && n.deliver_at && new Date(n.deliver_at) > new Date() ? ` · delivers ${fmtDate(n.deliver_at, true)}` : ''}

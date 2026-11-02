@@ -3,6 +3,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState, AppStateStatus } from 'react-native';
 import { api, ApiError, Message, SyncEvent, SyncResponse, uuidv4 } from '../lib/api';
 import { useAuth } from './AuthProvider';
+import { play } from '../lib/sounds';
 
 /**
  * Keeps the chat and every couple feature in sync with the server.
@@ -83,8 +84,14 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   const relayUpRef = useRef(false);
   relayUpRef.current = relayUp;
 
+  const seenIds = useRef<Set<number> | null>(null);
   const merge = useCallback((list: Message[], removed: number[] = []) => {
     if (!list.length && !removed.length) return;
+    // A soft chime for a new message from my partner (not on the first load)
+    if (seenIds.current) {
+      if (list.some((m) => !m.mine && !m.deleted && !seenIds.current!.has(m.id) && Date.now() - new Date(m.created_at).getTime() < 120000)) play('receive');
+    } else if (list.length) seenIds.current = new Set();
+    for (const m of list) seenIds.current?.add(m.id);
     setById((prev) => {
       const next = { ...prev };
       for (const m of list) next[m.id] = m;
@@ -111,6 +118,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
   }, [outbox]);
 
   const emit = (e: SyncEvent) => {
+    if (e.type === 'game.invited' && e.actor_id !== me?.id) play('invite');
     listeners.current.forEach((set, prefix) => {
       if (e.type.startsWith(prefix)) set.forEach((fn) => fn(e));
     });
@@ -341,6 +349,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
       const item: OutboxItem = { ...draft, client_id: uuidv4(), created_at: new Date().toISOString(), status: 'sending' };
       setOutbox((o) => [...o, item]);
       outboxRef.current = [...outboxRef.current, item];
+      play('send');
       syncNow();
     },
     [syncNow],

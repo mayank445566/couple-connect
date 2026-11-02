@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Button, Card, ErrorBox, Field, Header, Hero, Muted, Screen, SkeletonList, T } from '../components/ui';
 import { api } from '../lib/api';
+import { t } from '../lib/i18n';
 import { useLoad } from '../lib/useLoad';
 import { useSyncEvent } from '../state/SyncProvider';
 
@@ -42,7 +43,7 @@ export default function DailyQuestion() {
       {!q ? d.error ? <ErrorBox error={d.error} onRetry={d.reload} /> : <SkeletonList rows={2} /> : (
         <>
           <Hero>
-            <T color="#ffffffCC" size={13}>{q.day}{q.streak > 0 ? ` · 🔥 ${q.streak}-day streak` : ''}</T>
+            <T color="#ffffffCC" size={13}>{q.day}{q.streak > 0 ? ` · 🔥 ${t('{n}-day streak', { n: q.streak })}` : ''}</T>
             <T color="#fff" size={21} weight="700">{q.question?.text ?? 'No question today.'}</T>
           </Hero>
           {q.question && (!q.my_answer || editing) ? (
@@ -55,14 +56,14 @@ export default function DailyQuestion() {
           {q.my_answer && !editing ? (
             <Card>
               <Muted>You</Muted>
-              <T>{q.my_answer}</T>
+              <T raw>{q.my_answer}</T>
               <Button title="Edit" variant="ghost" onPress={() => setEditing(true)} />
             </Card>
           ) : null}
           {q.my_answer ? (
             <Card>
               <Muted>Partner</Muted>
-              <T>{q.partner_answer ?? 'Hasn’t answered yet.'}</T>
+              <T raw>{q.partner_answer ?? t('Hasn’t answered yet.')}</T>
             </Card>
           ) : q.partner_answered ? (
             <Muted center>Your partner already answered. Answer to see theirs.</Muted>

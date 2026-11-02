@@ -14,6 +14,7 @@ import { useLoad } from '../../lib/useLoad';
 import { useAuth } from '../../state/AuthProvider';
 import { OutboxItem, useSync } from '../../state/SyncProvider';
 import { useTheme } from '../../state/ThemeProvider';
+import { t } from '../../lib/i18n';
 
 type Row_ = { kind: 'msg'; m: Message } | { kind: 'pending'; p: OutboxItem } | { kind: 'day'; label: string; key: string };
 
@@ -63,7 +64,7 @@ export default function Chat() {
 
   const jumpTo = (id: number) => {
     const idx = rows.findIndex((r) => r.kind === 'msg' && r.m.id === id);
-    if (idx < 0) return Alert.alert('Older message', 'Scroll up to load older messages.');
+    if (idx < 0) return Alert.alert(t('Older message'), t('Scroll up to load older messages.'));
     list.current?.scrollToIndex({ index: idx, viewPosition: 0.5, animated: true });
     setHighlight(id);
     setTimeout(() => setHighlight(null), 1500);
@@ -75,7 +76,7 @@ export default function Chat() {
       const r = await fn();
       if (r && typeof r === 'object' && 'id' in r && 'client_id' in r) upsert(r as Message);
     } catch (e) {
-      Alert.alert('Something went wrong', errorText(e));
+      Alert.alert(t('Something went wrong'), errorText(e));
     }
   };
 
@@ -87,7 +88,7 @@ export default function Chat() {
       // Already in a call (maybe on another device): open it instead
       const existing = (e as any)?.fields?.call_id;
       if (existing) router.push(`/call/${existing}`);
-      else Alert.alert('Could not call', errorText(e));
+      else Alert.alert(t('Could not call'), errorText(e));
     }
   };
 
@@ -146,7 +147,7 @@ export default function Chat() {
       {pinned.length ? (
         <Pressable onPress={() => jumpTo(pinned[0].id)} style={[cardStyle(c), { flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, marginHorizontal: 12, marginBottom: 6, borderRadius: 16 }]}>
           <Ionicons name="pin" size={14} color={c.primary} />
-          <T size={13} numberOfLines={1} style={{ flex: 1 }}>{preview(pinned[0])}</T>
+          <T raw size={13} numberOfLines={1} style={{ flex: 1 }}>{preview(pinned[0])}</T>
           {pinned.length > 1 ? <Muted>+{pinned.length - 1}</Muted> : null}
         </Pressable>
       ) : null}

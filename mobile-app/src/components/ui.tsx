@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError, authedSource } from '../lib/api';
+import { tr, t, useLang } from '../lib/i18n';
 import { FONT, shade, useTheme } from '../state/ThemeProvider';
 
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -52,8 +53,14 @@ export function Screen({ children, scroll = true, padded = true, style, edges, r
 
 const FAMILY: Record<string, string> = { '100': FONT.regular, '200': FONT.regular, '300': FONT.regular, '400': FONT.regular, normal: FONT.regular, '500': FONT.medium, '600': FONT.semibold, '700': FONT.bold, bold: FONT.bold, '800': FONT.extrabold, '900': FONT.extrabold };
 
-export function T({ children, size = 15, weight = '400', color, style, numberOfLines, center, serif }: { children: React.ReactNode; size?: number; weight?: TextStyle['fontWeight']; color?: string; style?: StyleProp<TextStyle>; numberOfLines?: number; center?: boolean; serif?: boolean }) {
+/**
+ * Text. UI strings are translated here, so every screen follows the app language.
+ * Pass `raw` for things people wrote (messages, answers, names) so they are never altered.
+ */
+export function T({ children, size = 15, weight = '400', color, style, numberOfLines, center, serif, raw }: { children: React.ReactNode; size?: number; weight?: TextStyle['fontWeight']; color?: string; style?: StyleProp<TextStyle>; numberOfLines?: number; center?: boolean; serif?: boolean; raw?: boolean }) {
   const { c } = useTheme();
+  useLang();
+  if (!raw) children = tr(children);
   const italic = StyleSheet.flatten(style)?.fontStyle === 'italic';
   const family = serif ? (italic ? FONT.serifItalic : FONT.serif) : FAMILY[String(weight)] ?? FONT.regular;
   return (
@@ -67,9 +74,9 @@ export function H1({ children }: { children: React.ReactNode }) {
   return <T size={30} serif>{children}</T>;
 }
 
-export function Muted({ children, size = 13, center, numberOfLines }: { children: React.ReactNode; size?: number; center?: boolean; numberOfLines?: number }) {
+export function Muted({ children, size = 13, center, numberOfLines, raw }: { children: React.ReactNode; size?: number; center?: boolean; numberOfLines?: number; raw?: boolean }) {
   const { c } = useTheme();
-  return <T size={size} color={c.muted} center={center} numberOfLines={numberOfLines}>{children}</T>;
+  return <T size={size} color={c.muted} center={center} numberOfLines={numberOfLines} raw={raw}>{children}</T>;
 }
 
 /** Small uppercase label above a group of cards. */
@@ -151,6 +158,8 @@ export function Button({ title, onPress, variant = 'primary', loading, disabled,
 
 export function Field({ label, error, ...props }: TextInputProps & { label?: string; error?: string }) {
   const { c } = useTheme();
+  useLang();
+  if (props.placeholder) props = { ...props, placeholder: t(props.placeholder) };
   const [focus, setFocus] = React.useState(false);
   return (
     <View style={{ gap: 6 }}>
@@ -273,7 +282,7 @@ export function Header({ title, right, onBack }: { title: string; right?: React.
     <Row style={{ justifyContent: 'space-between', paddingVertical: 4 }}>
       <Row style={{ flexShrink: 1 }}>
         {onBack ? (
-          <Pressable onPress={onBack} hitSlop={12} accessibilityLabel="Back" style={[cardStyle(c), { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }]}>
+          <Pressable onPress={onBack} hitSlop={12} accessibilityLabel={t('Back')} style={[cardStyle(c), { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }]}>
             <Ionicons name="chevron-back" size={22} color={c.text} />
           </Pressable>
         ) : null}
@@ -297,9 +306,9 @@ export function errorText(e: unknown): string {
 export function timeAgo(iso: string | null | undefined): string {
   if (!iso) return '';
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 60) return t('just now');
+  if (s < 3600) return t('{n}m ago', { n: Math.floor(s / 60) });
+  if (s < 86400) return t('{n}h ago', { n: Math.floor(s / 3600) });
   return new Date(iso).toLocaleDateString();
 }
 

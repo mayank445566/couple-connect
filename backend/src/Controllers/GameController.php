@@ -12,6 +12,7 @@ use App\Core\Validator;
 use App\Services\CoupleContext;
 use App\Services\Entitlements;
 use App\Services\Events;
+use App\Services\Lang;
 use App\Services\Present;
 
 /**
@@ -32,6 +33,7 @@ final class GameController
 {
     private const ADULT_LEVELS = ['flirty', 'romantic', 'bold', 'intimate', 'spicy'];
     private const LEVELS = ['easy', 'medium', 'hard'];
+    private const MAX_ROUNDS = 500;
 
     // ---- catalog -------------------------------------------------------
 
@@ -40,7 +42,7 @@ final class GameController
         $ent = Entitlements::forUser($user);
         $games = Database::all('SELECT * FROM games WHERE enabled = 1 ORDER BY section, sort_order, id');
         $packs = Database::all(
-            'SELECT p.id, p.game_id, p.title, p.level, p.is_premium, p.couple_id, COUNT(q.id) AS questions
+            'SELECT p.id, p.game_id, p.title, p.title_hi, p.level, p.is_premium, p.couple_id, COUNT(q.id) AS questions
                FROM question_packs p LEFT JOIN questions q ON q.pack_id = p.id AND q.enabled = 1
               WHERE p.enabled = 1 AND (p.couple_id IS NULL OR p.couple_id = ?)
               GROUP BY p.id ORDER BY p.sort_order, p.id',
@@ -50,7 +52,7 @@ final class GameController
         foreach ($packs as $p) {
             $byGame[(int)$p['game_id']][] = [
                 'id' => (int)$p['id'],
-                'title' => $p['title'],
+                'title' => Lang::pick($p, 'title'),
                 'level' => $p['level'],
                 'premium' => (bool)$p['is_premium'],
                 'custom' => $p['couple_id'] !== null,
@@ -79,7 +81,7 @@ final class GameController
             [$g['id'], $user['active_couple_id'] ?? 0]
         );
         return $this->presentGame($g, array_map(fn($p) => [
-            'id' => (int)$p['id'], 'title' => $p['title'], 'level' => $p['level'], 'premium' => (bool)$p['is_premium'],
+            'id' => (int)$p['id'], 'title' => Lang::pick($p, 'title'), 'level' => $p['level'], 'premium' => (bool)$p['is_premium'],
             'custom' => $p['couple_id'] !== null, 'questions' => (int)$p['questions'],
             'locked' => (bool)$p['is_premium'] && !$ent['premium']['owned'],
         ], $packs), $ent['premium']['owned']);
@@ -115,7 +117,10 @@ final class GameController
                 throw new ApiException(402, 'premium_required', 'Unlock Premium to play this pack.');
             }
         }
-        $rounds = max(1, min(30, $d['rounds'] ?? (int)$g['rounds']));
+        // Premium couples have no round limit: 0 means endless (play until you stop or every card is used)
+        $premium = Entitlements::has($user, 'premium');
+        $rounds = $d['rounds'] ?? (int)$g['rounds'];
+        $rounds = $premium ? ($rounds <= 0 ? 0 : min(self::MAX_ROUNDS, $rounds)) : max(1, min(30, $rounds));
         // One pending invite per game: a new invite replaces the old one
         Database::run(
             "UPDATE game_sessions SET status = 'stopped', stopped_by = ? WHERE couple_id = ? AND game_id = ? AND status = 'invited'",
@@ -134,7 +139,7 @@ final class GameController
     {
         $ctx = CoupleContext::require($user);
         $status = $req->query['status'] ?? null;
-        $sql = 'SELECT s.*, g.slug, g.title, g.section, g.mode FROM game_sessions s JOIN games g ON g.id = s.game_id WHERE s.couple_id = ?';
+        $sql = 'SELECT s.*, g.slug, g.title, g.title_hi, g.section, g.mode FROM game_sessions s JOIN games g ON g.id = s.game_id WHERE s.couple_id = ?';
         $params = [$ctx->id()];
         if (in_array($status, ['invited', 'active', 'finished', 'stopped'], true)) {
             $sql .= ' AND s.status = ?';
@@ -143,7 +148,7 @@ final class GameController
         $rows = Database::all($sql . ' ORDER BY s.id DESC LIMIT 50', $params);
         return array_map(fn($s) => [
             'id' => (int)$s['id'],
-            'game' => ['slug' => $s['slug'], 'title' => $s['title'], 'section' => $s['section'], 'mode' => $s['mode']],
+            'game' => ['slug' => $s['slug'], 'title' => Lang::pick($s, 'title'), 'section' => $s['section'], 'mode' => $s['mode']],
             'status' => $s['status'],
             'started_by' => (int)$s['started_by'],
             'round_no' => (int)$s['round_no'],
@@ -229,7 +234,8 @@ final class GameController
         if ($kind !== null && !in_array($kind, ['truth', 'dare'], true)) {
             throw ApiException::validation(['kind' => 'Choose truth or dare.']);
         }
-        if ((int)$s['round_no'] >= (int)$s['total_rounds'] || !$this->newRound($s, $g, $ctx, $kind)) {
+        $endless = (int)$s['total_rounds'] === 0;
+        if ((!$endless && (int)$s['round_no'] >= (int)$s['total_rounds']) || (int)$s['round_no'] >= 60000 || !$this->newRound($s, $g, $ctx, $kind)) {
             $this->finish((int)$s['id']);
         }
         Events::emit($ctx->id(), $ctx->userId, 'game.updated', ['session_id' => (int)$s['id']]);
@@ -425,14 +431,14 @@ final class GameController
     {
         $ctx = CoupleContext::require($user);
         $rows = Database::all(
-            'SELECT a.day, a.user_id, a.answer, q.text FROM daily_answers a JOIN questions q ON q.id = a.question_id
+            'SELECT a.day, a.user_id, a.answer, q.text, q.text_hi FROM daily_answers a JOIN questions q ON q.id = a.question_id
               WHERE a.couple_id = ? AND a.day < ? ORDER BY a.day DESC LIMIT 120',
             [$ctx->id(), self::today()]
         );
         $days = [];
         foreach ($rows as $r) {
             $days[$r['day']]['day'] = $r['day'];
-            $days[$r['day']]['question'] = $r['text'];
+            $days[$r['day']]['question'] = Lang::pick($r, 'text');
             $days[$r['day']]['answers'][(int)$r['user_id'] === $ctx->userId ? 'mine' : 'partner'] = $r['answer'];
         }
         // Past answers are shown only for days you answered too
@@ -469,17 +475,18 @@ final class GameController
         $answers = Database::all('SELECT user_id, question_id, answer FROM daily_answers WHERE couple_id = ? AND day = ?', [$ctx->id(), $day]);
         $qid = $answers[0]['question_id'] ?? null;
         if ($qid === null) {
-            $ids = Database::run(
-                'SELECT q.id FROM questions q JOIN question_packs p ON p.id = q.pack_id WHERE p.slug = ? AND q.enabled = 1 AND p.enabled = 1 ORDER BY q.id',
-                [\App\Services\Settings::get('daily_question_pack')]
-            )->fetchAll(\PDO::FETCH_COLUMN);
-            if ($ids) {
-                // Same question for both partners on a given day, different couples get different orders
-                $idx = (intdiv(strtotime($day . ' UTC'), 86400) + $ctx->id() * 7) % count($ids);
-                $qid = (int)$ids[$idx];
-            }
+            // Same question for both partners today (seeded by couple and day), never one this couple
+            // already answered until the whole pack has been used.
+            $qid = Database::value(
+                'SELECT q.id FROM questions q JOIN question_packs p ON p.id = q.pack_id
+                   LEFT JOIN (SELECT question_id, MAX(day) AS last_day FROM daily_answers WHERE couple_id = ? GROUP BY question_id) seen ON seen.question_id = q.id
+                  WHERE p.slug = ? AND q.enabled = 1 AND p.enabled = 1
+                  ORDER BY seen.last_day IS NOT NULL, seen.last_day, CRC32(CONCAT(?, \'-\', q.id, \'-\', ?)) LIMIT 1',
+                [$ctx->id(), \App\Services\Settings::get('daily_question_pack'), $ctx->id(), $day]
+            );
+            $qid = $qid !== null && $qid !== false ? (int)$qid : null;
         }
-        $q = $qid ? Database::one('SELECT id, text FROM questions WHERE id = ?', [$qid]) : null;
+        $q = $qid ? Database::one('SELECT id, text, text_hi FROM questions WHERE id = ?', [$qid]) : null;
         $mine = $partner = null;
         foreach ($answers as $a) {
             if ((int)$a['user_id'] === $ctx->userId) {
@@ -490,7 +497,7 @@ final class GameController
         }
         return [
             'day' => $day,
-            'question' => $q ? ['id' => (int)$q['id'], 'text' => $q['text']] : null,
+            'question' => $q ? ['id' => (int)$q['id'], 'text' => Lang::pick($q, 'text')] : null,
             'my_answer' => $mine,
             'partner_answered' => $partner !== null,
             // You see your partner's answer only after giving your own
@@ -544,14 +551,22 @@ final class GameController
         }
         $where[] = 'q.id NOT IN (SELECT question_id FROM game_rounds WHERE session_id = ?)';
         $params[] = $s['id'];
-        // Prefer questions this couple has not seen in the last 60 days
-        $params[] = $ctx->id();
-        return Database::one(
-            'SELECT q.* FROM questions q JOIN question_packs p ON p.id = q.pack_id WHERE ' . implode(' AND ', $where) . '
-              ORDER BY q.id IN (SELECT r.question_id FROM game_rounds r JOIN game_sessions gs ON gs.id = r.session_id
-                                 WHERE gs.couple_id = ? AND r.created_at > UTC_TIMESTAMP() - INTERVAL 60 DAY), RAND() LIMIT 1',
-            $params
-        );
+        // Shuffle without repeats: cards this couple has never had come first, in random order.
+        // Only when every card has been played do repeats start, oldest first.
+        array_unshift($params, $ctx->id());
+        $sql = fn(array $w) => 'SELECT q.* FROM questions q JOIN question_packs p ON p.id = q.pack_id
+               LEFT JOIN (SELECT r.question_id, MAX(r.id) AS last_round FROM game_rounds r JOIN game_sessions gs ON gs.id = r.session_id
+                           WHERE gs.couple_id = ? GROUP BY r.question_id) seen ON seen.question_id = q.id
+              WHERE ' . implode(' AND ', $w) . '
+              ORDER BY seen.last_round IS NOT NULL, seen.last_round, RAND() LIMIT 1';
+        $q = Database::one($sql($where), $params);
+        if ($q === null && (int)$s['total_rounds'] === 0) {
+            // Endless game and the whole deck is used: reshuffle, least recently played first
+            array_pop($where);
+            array_pop($params);
+            $q = Database::one($sql($where), $params);
+        }
+        return $q;
     }
 
     private function normalizeAnswer(mixed $a, array $q, CoupleContext $ctx, bool $isGuesser): array
@@ -699,9 +714,13 @@ final class GameController
                 'question' => [
                     'id' => (int)$q['id'],
                     'kind' => $q['kind'],
-                    'text' => $q['text'],
+                    'text' => Lang::pick($q, 'text'),
+                    // "options" are the values the app sends back (same for both partners, whatever their language);
+                    // "labels" are what to show.
                     'options' => is_array($options) ? array_map(fn($o) => is_array($o) ? $o['t'] : $o, $options) : null,
+                    'labels' => $this->labels($q, $options),
                     'pick_partner' => $options === ['@couple'],
+                    'level' => Database::value('SELECT level FROM question_packs WHERE id = ?', [$q['pack_id']]),
                 ],
                 'subject_id' => $subject,
                 'your_turn' => $round['status'] === 'open' && $myAnswer === null,
@@ -713,10 +732,11 @@ final class GameController
         }
         $out = [
             'id' => (int)$s['id'],
-            'game' => ['slug' => $g['slug'], 'title' => $g['title'], 'section' => $g['section'], 'mode' => $g['mode']],
+            'game' => ['slug' => $g['slug'], 'title' => Lang::pick($g, 'title'), 'section' => $g['section'], 'mode' => $g['mode'], 'wild' => !empty((json_decode((string)$g['config'], true) ?: [])['wild'])],
             'status' => $s['status'],
             'started_by' => (int)$s['started_by'],
             'level' => $s['level'],
+            'endless' => (int)$s['total_rounds'] === 0,
             'round_no' => (int)$s['round_no'],
             'total_rounds' => (int)$s['total_rounds'],
             'scores' => json_decode((string)$s['scores'], true),
@@ -781,13 +801,27 @@ final class GameController
         ];
     }
 
+    /** Display labels for options in the app's language; null when they equal the values. */
+    private function labels(array $q, mixed $options): ?array
+    {
+        if (!is_array($options) || $options === ['@couple']) {
+            return null;
+        }
+        $hi = Lang::options($q);
+        if ($hi === null || count($hi) !== count($options)) {
+            return null;
+        }
+        return array_map(fn($o) => is_array($o) ? (string)($o['t'] ?? '') : (string)$o, $hi);
+    }
+
     private function presentGame(array $g, array $packs, bool $premium): array
     {
         $config = json_decode((string)$g['config'], true) ?: [];
         return [
             'slug' => $g['slug'],
-            'title' => $g['title'],
-            'description' => $g['description'],
+            'title' => Lang::pick($g, 'title'),
+            'description' => Lang::pick($g, 'description'),
+            'wild' => !empty($config['wild']),
             'section' => $g['section'],
             'mode' => $g['mode'],
             'icon' => $g['icon'],
@@ -795,6 +829,7 @@ final class GameController
             'locked' => ((bool)$g['is_premium'] || $g['section'] === 'adult') && !$premium,
             'rounds' => (int)$g['rounds'],
             'both_answer' => !empty($config['both_answer']),
+            'max_rounds' => $premium ? self::MAX_ROUNDS : 30,
             'choose_kind' => !empty($config['choose_kind']),
             'packs' => $packs,
         ];

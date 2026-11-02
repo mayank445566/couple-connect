@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Card, ErrorBox, Header, Muted, Pill, Row, Screen, T } from '../components/ui';
 import { ApiError } from '../lib/api';
@@ -11,8 +11,10 @@ const SWATCHES = ['#E8456B', '#FF7A59', '#F5A524', '#30A46C', '#12A594', '#3E63D
 const SCALES = [0.9, 1, 1.15, 1.3];
 
 export default function Themes() {
-  const { c, themes, prefs, apply } = useTheme();
+  const { c, themes, prefs, apply, reload } = useTheme();
   const [err, setErr] = useState<unknown>(null);
+  // Always refresh on open so a fresh Premium purchase unlocks themes without restarting the app
+  useFocusEffect(useCallback(() => { reload().catch(() => {}); }, [reload]));
 
   const run = async (patch: Record<string, unknown>) => {
     setErr(null);
@@ -41,7 +43,7 @@ export default function Themes() {
         {themes.map((t) => {
           const g = (t.tokens.gradient && t.tokens.gradient.length >= 2 ? t.tokens.gradient : [t.tokens.primary, t.tokens.background]) as [string, string, ...string[]];
           return (
-            <Pressable key={t.slug} onPress={() => (t.locked ? router.push('/premium') : run({ theme_slug: t.slug }))} style={{ width: '47%', flexGrow: 1 }} accessibilityLabel={`${t.name} theme${t.locked ? ', locked' : ''}`}>
+            <Pressable key={t.slug} onPress={() => run({ theme_slug: t.slug })} style={{ width: '47%', flexGrow: 1 }} accessibilityLabel={`${t.name} theme${t.locked ? ', locked' : ''}`}>
               <View style={{ borderRadius: 20, overflow: 'hidden', borderWidth: t.active ? 3 : 1, borderColor: t.active ? c.primary : c.border }}>
                 <LinearGradient colors={g} style={{ height: 70, padding: 10, justifyContent: 'flex-end' }}>
                   <View style={{ alignSelf: 'flex-end', backgroundColor: t.tokens.bubble_mine, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>

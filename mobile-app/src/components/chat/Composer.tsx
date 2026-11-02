@@ -6,10 +6,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, TextInput, View } from 'react-native';
 import { Message, uploadMedia } from '../../lib/api';
+import { shrinkPhoto } from '../../lib/compress';
 import { useSync } from '../../state/SyncProvider';
 import { FONT, useTheme } from '../../state/ThemeProvider';
 import { cardStyle, errorText, IconBubble, T } from '../ui';
 import { preview } from './MessageBubble';
+import { t } from '../../lib/i18n';
 
 type Props = {
   replyTo: Message | null;
@@ -40,7 +42,7 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
         await onSaveEdit(editing, body);
         setText('');
       } catch (e) {
-        Alert.alert('Could not edit', errorText(e));
+        Alert.alert(t('Could not edit'), errorText(e));
       }
       return;
     }
@@ -56,7 +58,7 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
       send({ type: kind, media_id: media.id, reply_to_id: replyTo?.id ?? null, local_uri: kind === 'image' ? file.uri : undefined });
       onCancelReply();
     } catch (e) {
-      Alert.alert('Upload failed', errorText(e));
+      Alert.alert(t('Upload failed'), errorText(e));
     } finally {
       setUploading(null);
     }
@@ -66,14 +68,16 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
     setMenu(false);
     if (camera) {
       const p = await ImagePicker.requestCameraPermissionsAsync();
-      if (!p.granted) return Alert.alert('Camera access needed', 'Allow camera access in settings to take photos.');
+      if (!p.granted) return Alert.alert(t('Camera access needed'), t('Allow camera access in settings to take photos.'));
     }
     const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images', 'videos'], quality: 0.85, videoMaxDuration: 300 };
     const r = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
     if (r.canceled || !r.assets[0]) return;
     const a = r.assets[0];
     const isVideo = a.type === 'video';
-    await sendFile({ uri: a.uri, name: a.fileName ?? (isVideo ? 'video.mp4' : 'photo.jpg'), type: a.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg') }, isVideo ? 'video' : 'image', isVideo && a.duration ? a.duration : undefined);
+    const picked = { uri: a.uri, name: a.fileName ?? (isVideo ? 'video.mp4' : 'photo.jpg'), type: a.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg') };
+    const file = isVideo ? picked : await shrinkPhoto({ ...picked, width: a.width, height: a.height });
+    await sendFile(file, isVideo ? 'video' : 'image', isVideo && a.duration ? a.duration : undefined);
   };
 
   const pickDoc = async () => {
@@ -86,7 +90,7 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
 
   const startRec = async () => {
     const p = await requestRecordingPermissionsAsync();
-    if (!p.granted) return Alert.alert('Microphone access needed', 'Allow microphone access in settings to send voice notes.');
+    if (!p.granted) return Alert.alert(t('Microphone access needed'), t('Allow microphone access in settings to send voice notes.'));
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     await recorder.prepareToRecordAsync();
     recorder.record();

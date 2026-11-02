@@ -46,17 +46,19 @@ final class Installer
             $file = BASE_PATH . '/database/seeds/content.php';
         }
         $content = require $file;
-        Database::transaction(function () use ($content) {
+        $hi = $content['hi'] ?? [];
+        $tr = fn(?string $en) => $en !== null && isset($hi[$en]) ? $hi[$en] : null;
+        Database::transaction(function () use ($content, $tr) {
             $gSort = 0;
             foreach ($content['games'] as $g) {
                 $gSort += 10;
                 $section = $g['section'] ?? 'free';
                 Database::run(
-                    'INSERT INTO games (slug, title, description, section, mode, is_premium, rounds, icon, config, sort_order)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                     ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), section = VALUES(section),
+                    'INSERT INTO games (slug, title, title_hi, description, description_hi, section, mode, is_premium, rounds, icon, config, sort_order)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE title = VALUES(title), title_hi = VALUES(title_hi), description = VALUES(description), description_hi = VALUES(description_hi), section = VALUES(section),
                        mode = VALUES(mode), is_premium = VALUES(is_premium), rounds = VALUES(rounds), icon = VALUES(icon), config = VALUES(config)',
-                    [$g['slug'], $g['title'], $g['description'], $section, $g['mode'], $section === 'adult' ? 1 : (int)($g['premium'] ?? 0),
+                    [$g['slug'], $g['title'], $g['title_hi'] ?? $tr($g['title']), $g['description'], $g['description_hi'] ?? $tr($g['description']), $section, $g['mode'], $section === 'adult' ? 1 : (int)($g['premium'] ?? 0),
                      $g['rounds'], $g['icon'] ?? null, isset($g['config']) ? json_encode($g['config']) : null, $gSort]
                 );
                 $gameId = (int)Database::value('SELECT id FROM games WHERE slug = ?', [$g['slug']]);
@@ -64,9 +66,9 @@ final class Installer
                 foreach ($g['packs'] as $p) {
                     $pSort += 10;
                     Database::run(
-                        'INSERT INTO question_packs (game_id, slug, title, level, is_premium, sort_order) VALUES (?, ?, ?, ?, ?, ?)
-                         ON DUPLICATE KEY UPDATE title = VALUES(title), level = VALUES(level), is_premium = VALUES(is_premium)',
-                        [$gameId, $p['slug'], $p['title'], $p['level'], $section === 'adult' ? 1 : (int)($p['premium'] ?? 0), $pSort]
+                        'INSERT INTO question_packs (game_id, slug, title, title_hi, level, is_premium, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)
+                         ON DUPLICATE KEY UPDATE title = VALUES(title), title_hi = VALUES(title_hi), level = VALUES(level), is_premium = VALUES(is_premium)',
+                        [$gameId, $p['slug'], $p['title'], $p['title_hi'] ?? $tr($p['title']), $p['level'], $section === 'adult' ? 1 : (int)($p['premium'] ?? 0), $pSort]
                     );
                     $packId = (int)Database::value('SELECT id FROM question_packs WHERE slug = ?', [$p['slug']]);
                     foreach ($p['questions'] as $q) {
@@ -74,16 +76,27 @@ final class Installer
                         $options = $q[2] ?? null;
                         $correct = $q[3] ?? null;
                         $opt = $options ? json_encode($options, JSON_UNESCAPED_UNICODE) : null;
+                        // Hindi: given inline ('hi' / 'hio') or looked up in the shared translation table
+                        $textHi = $q['hi'] ?? $tr($text);
+                        $optHi = $q['hio'] ?? null;
+                        if ($optHi === null && is_array($options) && $options !== ['@couple']) {
+                            $mapped = array_map(fn($o) => is_array($o) ? (($t = $tr($o['t'])) !== null ? ['t' => $t] + $o : null) : $tr($o), $options);
+                            $optHi = in_array(null, $mapped, true) ? null : $mapped;
+                        }
+                        $optHiJson = $optHi ? json_encode($optHi, JSON_UNESCAPED_UNICODE) : null;
                         $existing = Database::value(
                             "SELECT id FROM questions WHERE pack_id = ? AND text = ? AND ((options IS NULL AND ? IS NULL) OR JSON_EXTRACT(options, '$') = JSON_EXTRACT(?, '$'))",
                             [$packId, $text, $opt, $opt]
                         );
                         if ($existing) {
+                            if ($textHi !== null || $optHiJson !== null) {
+                                Database::run('UPDATE questions SET text_hi = COALESCE(?, text_hi), options_hi = COALESCE(?, options_hi) WHERE id = ?', [$textHi, $optHiJson, $existing]);
+                            }
                             continue;
                         }
                         Database::run(
-                            'INSERT INTO questions (pack_id, kind, text, options, correct) VALUES (?, ?, ?, ?, ?)',
-                            [$packId, $kind, $text, $options ? json_encode($options, JSON_UNESCAPED_UNICODE) : null, $correct]
+                            'INSERT INTO questions (pack_id, kind, text, text_hi, options, options_hi, correct) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            [$packId, $kind, $text, $textHi, $opt, $optHiJson, $correct]
                         );
                     }
                 }

@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { getLang } from './i18n';
 
 /** API base URL from app.json -> expo.extra.apiUrl (or EXPO_PUBLIC_API_URL at build time). */
 export const API_URL: string = (
@@ -70,7 +71,7 @@ export async function api<T = any>(
   opts: { form?: FormData; timeoutMs?: number } = {},
 ): Promise<T> {
   const token = await tokenStore.get();
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': getLang() };
   if (token) headers.Authorization = `Bearer ${token}`;
   if (body !== undefined && !opts.form) headers['Content-Type'] = 'application/json';
 
@@ -85,7 +86,8 @@ export async function api<T = any>(
       signal: ctrl.signal,
     });
   } catch {
-    throw new ApiError(0, 'network', 'No connection. Check your internet and try again.');
+    if (ctrl.signal.aborted) throw new ApiError(0, 'timeout', opts.form ? 'The upload took too long. Try again on a stronger connection.' : 'The server took too long to answer. Try again.');
+    throw new ApiError(0, 'network', opts.form ? 'The upload did not go through. Check your connection and try again.' : 'No connection. Check your internet and try again.');
   } finally {
     clearTimeout(timer);
   }
@@ -130,7 +132,13 @@ export async function uploadMedia(
   } else {
     form.append('file', file as any);
   }
-  return api<Media>('POST', '/media', undefined, { form, timeoutMs: 120000 });
+  try {
+    return await api<Media>('POST', '/media', undefined, { form, timeoutMs: 180000 });
+  } catch (e) {
+    // One automatic retry: mobile networks often drop a single long upload
+    if (e instanceof ApiError && e.code === 'network') return api<Media>('POST', '/media', undefined, { form, timeoutMs: 180000 });
+    throw e;
+  }
 }
 
 export function uuidv4(): string {
