@@ -33,9 +33,56 @@ A successful payment message in the app never unlocks anything by itself.
 | `themes_in_premium` | 1 | The ₹199 product grants both `premium` and `themes`. To sell themes separately, add a product granting only `themes` and remove it from `premium_lifetime`. |
 | `adult_section_enabled` | 1 | Hides the whole 18+ section when 0. |
 
-## Google Play
+## Google Play Billing (Play Store build)
 
-Google Play requires Play Billing for digital goods sold inside apps distributed through Play (India also allows user-choice billing alongside it). The `products.play_product_id` column is ready; the Play Billing purchase-token verification endpoint is part of Phase 6 and writes to the same `entitlements` table, so Premium bought on the web and in the Play build are the same thing.
+Apps distributed through Google Play must use Play Billing for digital goods. So the two builds pay differently:
+
+| Build | How users pay |
+| --- | --- |
+| Play Store build (`eas build --profile production`) | Google Play Billing (`EXPO_PUBLIC_BILLING=play`) |
+| Direct APK (`preview`) and the web app | Razorpay |
+
+Both write to the same `entitlements` table. Premium bought either way is the same Premium, and it shows on every device after **Restore purchases**.
+
+### How a Play purchase is verified
+
+1. The app asks `GET /store/google/config` for the Play product id and an **account tag**. The tag is the user's id plus an HMAC made with `APP_KEY`.
+2. The app opens the Play purchase sheet with that tag as `obfuscatedAccountId`.
+3. The app sends the purchase token to `POST /store/google/verify`.
+4. The server asks Google for the purchase (`purchases.products.get`) and checks three things:
+   - it was really bought (not pending or cancelled);
+   - the account tag belongs to the user calling;
+   - the Google order (`GPA.…`) has not been used before.
+
+   It then grants Premium and **acknowledges** the purchase. Google refunds purchases that are not acknowledged within 3 days.
+5. Real-time developer notifications (RTDN) reach `POST /webhooks/google-play?token=PLAY_RTDN_TOKEN`:
+   - a pending payment that completes later unlocks Premium;
+   - a **voided** purchase removes Premium. Voided means refunded in the Play Console, or charged back.
+
+   Duplicate notifications are ignored.
+
+### Setup
+
+1. **Create the product.** Play Console → your app → **Monetize → In-app products** → create product id `premium_lifetime` (it must match `products.play_product_id`). Set the price to ₹199 and activate it. You can only do this after uploading one build that includes Play Billing (the production profile).
+2. **Create the service account.**
+   - Google Cloud Console → create a service account and download its JSON key.
+   - Upload the key to the server **outside public_html**, for example `/home/USER/keys/play.json`.
+   - Play Console → **Users and permissions** → invite the service account's email. Give it **View financial data** and **Manage orders and subscriptions** for this app. It can take up to 24 hours to start working.
+3. **Fill in `.env`:**
+   ```
+   PLAY_PACKAGE_NAME=com.coupleconnect.app
+   PLAY_SERVICE_ACCOUNT=/home/USER/keys/play.json
+   PLAY_RTDN_TOKEN=<long random string>
+   ```
+   You can make the random string with `php -r "echo bin2hex(random_bytes(24));"`.
+4. **Turn on refund notifications.**
+   - Google Cloud → **Pub/Sub** → create topic `play-rtdn`.
+   - Grant `google-play-developer-notifications@system.gserviceaccount.com` the **Pub/Sub Publisher** role on that topic.
+   - Create a **push** subscription to `https://api.yourdomain.com/webhooks/google-play?token=<PLAY_RTDN_TOKEN>`.
+   - Play Console → **Monetize setup → Real-time developer notifications** → enter the topic name, then click **Send test notification**.
+5. **Test with license testers.** Play Console → **Settings → License testing** → add your Gmail. Testers can buy without being charged.
+
+The admin **Settings** page shows whether Play Billing is configured. Refunds for Play orders are issued in the Play Console. The voided-purchase notification then removes Premium automatically.
 
 ## Cashfree
 

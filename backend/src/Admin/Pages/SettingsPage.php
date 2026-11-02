@@ -97,6 +97,7 @@ final class SettingsPage
             ['Cron job', $cronAge !== null && $cronAge < 300, $cronAge === null ? 'Never ran. Add the cron line from the setup guide.' : 'Last ran ' . intdiv($cronAge, 60) . ' min ago'],
             ['Razorpay keys', $set('RAZORPAY_KEY_ID') && $set('RAZORPAY_KEY_SECRET') && $set('RAZORPAY_WEBHOOK_SECRET'), 'Key ID, secret and webhook secret ' . ($set('RAZORPAY_WEBHOOK_SECRET') ? 'set' : 'missing')],
             ['Live mode', str_starts_with((string)Config::get('RAZORPAY_KEY_ID'), 'rzp_live_'), str_starts_with((string)Config::get('RAZORPAY_KEY_ID'), 'rzp_live_') ? 'Live keys' : 'Test keys (no real money)'],
+            ['Google Play Billing', \App\Services\GooglePlay::enabled() && $set('PLAY_RTDN_TOKEN'), \App\Services\GooglePlay::enabled() ? ($set('PLAY_RTDN_TOKEN') ? 'Configured' : 'Set PLAY_RTDN_TOKEN so Play refunds reach the server') : 'Not set (needed only for the Play Store build)'],
             ['Email', Config::get('MAIL_DRIVER') === 'smtp', 'MAIL_DRIVER=' . Config::get('MAIL_DRIVER', 'log')],
             ['Push notifications', Config::get('PUSH_DRIVER') === 'fcm' && is_readable((string)Config::get('FCM_SERVICE_ACCOUNT')), 'PUSH_DRIVER=' . Config::get('PUSH_DRIVER', 'off')],
             ['Instant relay', $set('RELAY_URL') && $set('RELAY_SECRET'), $set('RELAY_URL') ? 'Configured' : 'Not set (app falls back to polling)'],

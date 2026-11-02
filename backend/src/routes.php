@@ -13,6 +13,7 @@ use App\Controllers\SyncController as S;
 use App\Controllers\GameController as G;
 use App\Controllers\HubController as H;
 use App\Controllers\PhoneController as Ph;
+use App\Controllers\PlayController as Pl;
 use App\Controllers\StoreController as St;
 use App\Controllers\ThemeController as T;
 use App\Core\Router;
@@ -114,6 +115,9 @@ $r->add('POST', '/store/orders/{id}/verify', [St::class, 'verify']);
 $r->add('GET', '/store/purchases', [St::class, 'purchases']);
 $r->add('POST', '/store/restore', [St::class, 'restore']);
 $r->add('POST', '/webhooks/razorpay', [St::class, 'webhook'], false);
+$r->add('GET', '/store/google/config', [Pl::class, 'config']);
+$r->add('POST', '/store/google/verify', [Pl::class, 'verify']);
+$r->add('POST', '/webhooks/google-play', [Pl::class, 'webhook'], false);
 
 // Themes and preferences
 $r->add('GET', '/themes', [T::class, 'index']);
