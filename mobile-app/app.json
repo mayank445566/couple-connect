@@ -74,7 +74,10 @@
     "scheme": "coupleconnect",
     "extra": {
       "apiUrl": "https://api.example.com",
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "e460b98d-a30c-4fef-a9bf-348c67272e2d"
+      }
     },
     "experiments": {
       "typedRoutes": false
