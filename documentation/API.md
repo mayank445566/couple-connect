@@ -120,3 +120,108 @@ Limits: images 15 MB, audio/voice 20 MB, video and files `MAX_UPLOAD_MB` (defaul
 | Method | Path | Body |
 | --- | --- | --- |
 | POST | /reports | `reason (harassment/abuse/underage/impersonation/spam/other), details?, reported_user_id?, message_ids? (up to 50, copied into the report so moderators see only these)` |
+
+---
+
+# Phase 2 endpoints
+
+## Phone signup and login
+
+| Method | Path | Auth | Body | Notes |
+| --- | --- | --- | --- | --- |
+| POST | /auth/phone/request-otp | no | `phone` (E.164, or 10-digit Indian number) | 3 per 15 min per number. Same answer whether or not an account exists. |
+| POST | /auth/phone/register | no | `phone, code, password, display_name, dob, accept_terms, email?, relationship_status?` | 201 → `{token, user}` with `phone_verified: true`. |
+| POST | /auth/phone/login | no | `phone` + `code` **or** `password` | Locked after 5 failures. |
+| POST | /me/phone | yes | `phone, code` | Add or change the phone on an account. |
+
+## Games
+
+Modes: `prompt` (a question, truth/dare or challenge), `match` (both pick an option), `guess` (one answers about themself, the other guesses), `quiz` (has a correct answer).
+
+| Method | Path | Body | Notes |
+| --- | --- | --- | --- |
+| GET | /games | – | `{games: {free: [...], adult: [...]}, premium, adult: {available, my_opt_in, partner_opt_in, premium}}`. Each game lists packs with `locked`. |
+| GET | /games/{slug} | – | One game with packs. |
+| POST | /games/sessions | `game (slug), pack_id?, level?, rounds?` | Invites the partner (`game.invited` event). Adult levels: flirty, romantic, bold, intimate, spicy. Free levels: easy, medium, hard. |
+| GET | /games/sessions | `?status=` | History (last 50). |
+| GET | /games/sessions/{id} | – | Session state (below). |
+| POST | /games/sessions/{id}/join | – | Partner accepts; round 1 starts. |
+| POST | /games/sessions/{id}/decline | – | |
+| POST | /games/sessions/{id}/answer | `answer` | See answer formats. Partner's answer stays hidden until the round is revealed. |
+| POST | /games/sessions/{id}/skip | – | Either partner, any round, no penalty. |
+| POST | /games/sessions/{id}/next | `kind?` (`truth`/`dare` for Truth or Dare) | Next round, or finishes the session after the last one. |
+| POST | /games/sessions/{id}/judge | `correct: bool` | Guess mode with free text: the person the question was about decides. |
+| POST | /games/sessions/{id}/stop | – | Either partner, any time. |
+| GET/POST | /games/{slug}/custom-questions | `text, options?, kind?` | The couple's own questions; used in that game's random picks. |
+| DELETE | /games/custom-questions/{id} | – | |
+| POST | /games/adult-consent | `opt_in: bool, confirm_adult: true` | Each partner opts in separately. Opting out stops any running 18+ game. |
+
+Answer formats: `{"choice": "<option text>"}`, `{"user_id": <id>}` (when `question.pick_partner`), `{"text": "..."}`, `{"done": true}` (challenges and dares), Two Truths: subject sends `{"statements": [a, b, c], "lie": 0-2}`, guesser sends `{"pick": 0-2}`.
+
+Session state:
+
+```json
+{
+  "id": 12, "game": {"slug": "this-or-that", "title": "This or That", "section": "free", "mode": "match"},
+  "status": "invited|active|finished|stopped|declined", "level": null,
+  "round_no": 2, "total_rounds": 10, "scores": {"1": 0, "2": 1, "sync": 3},
+  "round": {
+    "id": 40, "round_no": 2, "status": "open|revealed|skipped",
+    "question": {"id": 9, "kind": "question", "text": "Pick one", "options": ["Coffee", "Tea"], "pick_partner": false},
+    "subject_id": null, "your_turn": true, "my_answer": null,
+    "partner_answered": true, "partner_answer": null, "result": null
+  },
+  "can_skip": true, "can_stop": true,
+  "summary": {"rounds_played": 9, "rounds_skipped": 1, "compatibility_percent": 67, "top_category": {"1": "time"}}
+}
+```
+
+18+ games require, in this order: the section enabled by the admin, both partners 18+ by date of birth, both partners opted in, and Premium for the couple. Error codes: `adult_disabled`, `adult_age`, `adult_consent_required` (403), `premium_required` (402).
+
+## Daily question
+
+| Method | Path | Body | Notes |
+| --- | --- | --- | --- |
+| GET | /daily | – | `{day, question, my_answer, partner_answered, partner_answer, streak}`. You see your partner's answer only after answering. Day boundary: `APP_TIMEZONE`. |
+| POST | /daily | `answer` | Can be edited the same day. |
+| GET | /daily/history | – | Past days you both answered. |
+
+## Store and payments
+
+| Method | Path | Body | Notes |
+| --- | --- | --- | --- |
+| GET | /store/products | – | Products with `owned`, plus `entitlements`. |
+| POST | /store/orders | `sku` | 201 → `{order_id, checkout: {key, order_id, amount, currency, name, description, prefill}}`. Pass `checkout` to the Razorpay SDK. Reuses an unpaid order from the last 30 minutes. 409 `already_owned`. |
+| POST | /store/orders/{id}/verify | `razorpay_order_id, razorpay_payment_id, razorpay_signature` | From the Razorpay success callback. Unlocks only if the HMAC signature is valid. Safe to call twice. |
+| GET | /store/purchases | – | Paid/refunded orders. |
+| POST | /store/restore | – | Re-reads lifetime entitlements for this account (new phone, reinstall). |
+| POST | /webhooks/razorpay | raw Razorpay JSON | No auth; verified with `X-Razorpay-Signature`. Handles `payment.captured`, `order.paid`, `refund.processed`. Replays are ignored by event id. |
+
+Entitlements: `{"premium": {"owned": true, "via_partner": false}, "themes": {...}}`.
+
+## Themes and preferences
+
+| Method | Path | Body | Notes |
+| --- | --- | --- | --- |
+| GET | /themes | – | `{themes: [{slug, name, premium, locked, tokens, wallpaper_url, active}], preferences}` |
+| GET / PATCH | /me/preferences | `theme_slug?, color_mode? (system/light/dark), accent?, bubble_mine?, bubble_theirs? (#RRGGBB, premium), font_scale? (0.8–1.6), wallpaper?, notify_messages?, notify_games?, notify_reminders?, show_preview?, quiet_start?, quiet_end? (HH:MM)` | Premium theme or custom colours without the entitlement → 402. |
+
+## Long-distance hub and shared space
+
+| Method | Path | Body | Notes |
+| --- | --- | --- | --- |
+| GET | /home | – | Dashboard: partner (with today's mood), days together, next milestone, next meeting, next countdown, anniversary and partner birthday countdowns, upcoming events (30 days), memory of the day, daily-question status, streak, game invites, last tap, unread count, bucket progress. |
+| POST | /taps | `kind` (hug, kiss, heartbeat, miss_you, thinking_of_you, good_morning, good_night) | 30 per minute. Emits `tap.sent`. |
+| GET | /taps | – | Recent taps and 24-hour counts. |
+| GET / POST | /moods | `mood` (happy, loved, excited, calm, tired, stressed, sad, missing_you, angry), `note?` | One per person per day. |
+| GET | /notes | `?kind=journal|letter|note|wish` | Scheduled letters from your partner are hidden until delivery; `sealed_letters_waiting` counts them. |
+| POST | /notes | `kind, title?, body, deliver_at?` (letters only) | |
+| GET | /notes/{id} | – | Opening marks the note as read for the author. |
+| PATCH / DELETE | /notes/{id} | `title?, body?` | Author only. |
+| GET / POST | /hub/countdowns | `title, target_at (ISO), emoji?` | |
+| GET / POST | /hub/bucket | `title, notes?, category?` | PATCH with `done: true/false` to tick. |
+| GET / POST | /hub/calendar | `title, kind, starts_at, ends_at?, all_day?, repeat_yearly?, remind_minutes?, notes?` | `?from=` filters. |
+| GET / POST | /hub/memories | `title, happened_on (YYYY-MM-DD), body?, media_id?, is_milestone?, is_favorite?` | Upload photos with `POST /media` first. |
+| PATCH / DELETE | /hub/{list}/{id} | same fields | Either partner can edit shared lists. |
+
+New sync event types: `game.invited`, `game.updated`, `daily.answered`, `premium.unlocked`, `tap.sent`, `mood.updated`, `note.created`, `note.opened`, `hub.changed`.

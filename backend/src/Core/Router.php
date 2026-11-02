@@ -11,7 +11,11 @@ final class Router
     /** @param array{class-string, string} $handler */
     public function add(string $method, string $pattern, array $handler, bool $auth = true): void
     {
-        $regex = '#^' . preg_replace('#\{(\w+)\}#', '(?P<$1>[0-9]+)', rtrim($pattern, '/') ?: '/') . '$#';
+        $regex = '#^' . preg_replace_callback(
+            '#\{(\w+)\}#',
+            fn($m) => '(?P<' . $m[1] . '>' . (str_ends_with($m[1], 'slug') ? '[a-z0-9\-]{1,80}' : '[0-9]+') . ')',
+            rtrim($pattern, '/') ?: '/'
+        ) . '$#';
         $this->routes[] = [$method, $regex, $handler, $auth];
     }
 

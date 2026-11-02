@@ -5,6 +5,9 @@ namespace App\Core;
 
 final class Auth
 {
+    /** Verified against when an account does not exist, so response time does not reveal accounts. */
+    public const DUMMY_HASH = '$argon2id$v=19$m=65536,t=4,p=1$ak0xUjlaR29xQ1o1RHhaNQ$HueDoSLY4Bog7Q+J4BaMUfn5gB22NzWhM622RoNtOTI';
+
     public static function hashToken(string $token): string
     {
         return hash('sha256', $token);

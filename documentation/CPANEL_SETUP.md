@@ -50,7 +50,17 @@ cd ~/couple-connect/backend
 php bin/migrate.php
 ```
 
-Without Terminal: open phpMyAdmin, select the database, **Import** `database/migrations/001_core.sql`.
+Then load the starter games, themes and the ₹199 product:
+
+```
+php bin/seed.php
+```
+
+Without Terminal: open phpMyAdmin, select the database, **Import** each file in `database/migrations/` in order (001, 002, ...). The seed step needs PHP, so use cPanel's Terminal or a one-off cron job (`php /home/USER/couple-connect/backend/bin/seed.php`) for it.
+
+## 5b. Payments and SMS
+
+Follow `documentation/PAYMENTS.md` to add Razorpay keys and the webhook. For phone signup set `SMS_DRIVER` (`msg91` or `twilio`) and its keys; Indian numbers need a DLT-registered sender and template.
 
 ## 6. Cron job
 

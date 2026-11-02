@@ -67,6 +67,11 @@ final class Request
         );
     }
 
+    public function raw(): string
+    {
+        return $this->rawBody;
+    }
+
     public function header(string $name): ?string
     {
         return $this->headers[strtolower($name)] ?? null;

@@ -60,7 +60,7 @@ final class AuthController
         }
         $user = Database::one('SELECT * FROM users WHERE email = ?', [$d['email']]);
         // Verify against a dummy hash when the user does not exist, so timing does not reveal accounts
-        $hash = $user['password_hash'] ?? '$argon2id$v=19$m=65536,t=4,p=1$ak0xUjlaR29xQ1o1RHhaNQ$HueDoSLY4Bog7Q+J4BaMUfn5gB22NzWhM622RoNtOTI';
+        $hash = $user['password_hash'] ?? Auth::DUMMY_HASH;
         if (!password_verify($d['password'], $hash) || $user === null || $user['status'] === 'deleted') {
             RateLimiter::hit($emailKey, PHP_INT_MAX, 900);
             RateLimiter::hit($ipKey, PHP_INT_MAX, 900);
@@ -138,8 +138,8 @@ final class AuthController
 
     public function resendVerification(Request $req, array $user): array
     {
-        if ($user['email_verified_at'] !== null) {
-            return ['email_verified' => true];
+        if ($user['email_verified_at'] !== null || $user['email'] === null) {
+            return ['email_verified' => $user['email_verified_at'] !== null];
         }
         RateLimiter::hit('verify-resend:user:' . $user['id'], 3, 900);
         $this->sendVerification((int)$user['id'], $user['email'], $user['display_name']);
