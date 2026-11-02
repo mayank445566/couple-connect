@@ -1,6 +1,17 @@
 # Deploying the Couple Connect API on cPanel
 
-This covers Phase 1 (accounts, pairing, chat, media). No Node.js, Docker or root access is needed. An installer wizard arrives in Phase 6; until then the steps below take about 15 minutes.
+No Node.js, Docker or root access is needed. The setup takes about 15 minutes.
+
+**Easiest way:** do steps 1–3 below. Then open `https://api.yourdomain.com/install.php` and fill in the form. The installer does steps 4–5a for you:
+
+- checks your PHP;
+- generates the keys;
+- writes `.env`;
+- creates the tables and loads the games;
+- creates your admin account;
+- deletes itself.
+
+Then continue from step 5b. The manual steps are below if you prefer them.
 
 ## Requirements
 
@@ -15,7 +26,7 @@ cPanel → **Domains** → create `api.yourdomain.com`. Set its **document root*
 
 ## 2. Upload the code
 
-Upload `couple-connect-phase1.zip` with **File Manager** to your home directory (`/home/USER/`) and extract it. You should have:
+Upload the release zip (or the repository with `backend/vendor` included) with **File Manager** to your home directory (`/home/USER/`) and extract it. You should have:
 
 ```
 /home/USER/couple-connect/backend/public/index.php

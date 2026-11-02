@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { Button, Card, ErrorBox, Header, Hero, Muted, Row, Screen, SkeletonList, T} from '../components/ui';
 import { api, Entitlements } from '../lib/api';
-import { buy, PaymentCancelled } from '../lib/payments';
+import { billing, buy, PaymentCancelled, PaymentPending, restorePlay } from '../lib/payments';
 import { useLoad } from '../lib/useLoad';
 import { useSyncEvent } from '../state/SyncProvider';
 import { useTheme } from '../state/ThemeProvider';
@@ -41,6 +41,7 @@ export default function Premium() {
       reloadThemes().catch(() => {});
     } catch (e) {
       if (e instanceof PaymentCancelled) setMsg('Payment cancelled. You were not charged.');
+      else if (e instanceof PaymentPending) setMsg('Your payment is pending. Premium unlocks automatically when Google confirms it.');
       else setErr(e);
     } finally {
       setBusy(false);
@@ -50,6 +51,7 @@ export default function Premium() {
   const restore = async () => {
     setErr(null);
     try {
+      await restorePlay();
       await api('POST', '/store/restore');
       await store.reload();
       setMsg('Purchases checked.');
@@ -88,7 +90,11 @@ export default function Premium() {
       {err ? <ErrorBox error={err} /> : null}
       <Button title="Restore purchases" variant="ghost" onPress={restore} />
       <View style={{ gap: 4 }}>
-        <Muted center>Secure payment by Razorpay (UPI, cards, netbanking, wallets). Your payment details never touch our servers.</Muted>
+        <Muted center>
+          {billing === 'play'
+            ? 'Secure payment through Google Play. Your payment details never touch our servers.'
+            : 'Secure payment by Razorpay (UPI, cards, netbanking, wallets). Your payment details never touch our servers.'}
+        </Muted>
         <Muted center>18+ games also need both partners to be 18+ and to opt in.</Muted>
       </View>
     </Screen>

@@ -17,7 +17,7 @@ final class Razorpay
     /** Creates an order and returns Razorpay's order id. */
     public static function createOrder(int $amountPaise, string $currency, string $receipt, array $notes): string
     {
-        if (Config::bool('RAZORPAY_FAKE_ORDERS') && Config::get('APP_ENV') === 'local') {
+        if (Config::bool('RAZORPAY_FAKE_ORDERS') && Config::devMode()) {
             return 'order_fake' . bin2hex(random_bytes(7));
         }
         $ch = curl_init('https://api.razorpay.com/v1/orders');
@@ -46,7 +46,7 @@ final class Razorpay
     /** Full refund of a captured payment. Returns Razorpay's refund id. */
     public static function refund(string $paymentId, int $amountPaise, array $notes = []): string
     {
-        if (Config::bool('RAZORPAY_FAKE_ORDERS') && Config::get('APP_ENV') === 'local') {
+        if (Config::bool('RAZORPAY_FAKE_ORDERS') && Config::devMode()) {
             return 'rfnd_fake' . bin2hex(random_bytes(7));
         }
         $ch = curl_init('https://api.razorpay.com/v1/payments/' . rawurlencode($paymentId) . '/refund');

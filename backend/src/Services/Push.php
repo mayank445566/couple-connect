@@ -79,8 +79,11 @@ final class Push
 
     private static function fcm(string $token, string $title, string $body, array $data, string $channel): string
     {
-        $sa = self::serviceAccount();
-        $access = self::accessToken($sa);
+        $sa = GoogleAuth::serviceAccount('FCM_SERVICE_ACCOUNT');
+        if (!isset($sa['project_id'])) {
+            throw new \RuntimeException('FCM service account file has no project_id.');
+        }
+        $access = GoogleAuth::token($sa, 'https://www.googleapis.com/auth/firebase.messaging');
         $msg = [
             'message' => [
                 'token' => $token,
@@ -113,54 +116,5 @@ final class Push
             return 'unregistered';
         }
         return 'http_' . $code;
-    }
-
-    private static function serviceAccount(): array
-    {
-        $path = Config::get('FCM_SERVICE_ACCOUNT');
-        if (!$path || !is_readable($path)) {
-            throw new \RuntimeException('FCM_SERVICE_ACCOUNT file is missing or unreadable.');
-        }
-        $sa = json_decode((string)file_get_contents($path), true);
-        if (!isset($sa['client_email'], $sa['private_key'], $sa['project_id'])) {
-            throw new \RuntimeException('FCM service account file is invalid.');
-        }
-        return $sa;
-    }
-
-    private static function accessToken(array $sa): string
-    {
-        $cache = Config::storage('cache') . '/fcm_token.json';
-        $c = is_readable($cache) ? json_decode((string)file_get_contents($cache), true) : null;
-        if ($c && ($c['exp'] ?? 0) > time() + 60) {
-            return $c['token'];
-        }
-        $b64 = fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
-        $now = time();
-        $head = $b64(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-        $claims = $b64(json_encode([
-            'iss' => $sa['client_email'],
-            'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-            'aud' => 'https://oauth2.googleapis.com/token',
-            'iat' => $now,
-            'exp' => $now + 3600,
-        ]));
-        openssl_sign("$head.$claims", $sig, $sa['private_key'], OPENSSL_ALGO_SHA256);
-        $ch = curl_init('https://oauth2.googleapis.com/token');
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => http_build_query(['grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion' => "$head.$claims." . $b64($sig)]),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 6,
-        ]);
-        $r = json_decode((string)curl_exec($ch), true);
-        curl_close($ch);
-        if (!isset($r['access_token'])) {
-            throw new \RuntimeException('Could not get an FCM access token.');
-        }
-        @mkdir(dirname($cache), 0700, true);
-        file_put_contents($cache, json_encode(['token' => $r['access_token'], 'exp' => $now + 3000]), LOCK_EX);
-        @chmod($cache, 0600);
-        return $r['access_token'];
     }
 }

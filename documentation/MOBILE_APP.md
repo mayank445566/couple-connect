@@ -59,7 +59,7 @@ EXPO_PUBLIC_API_URL=http://<your-computer-ip>:8088 npx expo start
 2. Replace the placeholder icons in `assets/` (`icon.png` 1024×1024, `android-icon-foreground.png`, `android-icon-background.png`, `android-icon-monochrome.png`) with your own.
 3. `npm install -g eas-cli && eas login` (free Expo account).
 4. APK to install directly or share: `eas build --profile preview --platform android`.
-5. Play Store bundle (AAB): `eas build --profile production --platform android`. EAS creates and keeps the upload key; download a backup from expo.dev.
+5. Play Store bundle (AAB): `eas build --profile production --platform android`. EAS creates and keeps the upload key; download a backup from expo.dev. This profile uses Google Play Billing; `preview` uses Razorpay. Full steps: `RELEASE_BUILD.md`.
 6. Upload with `eas submit --platform android` (internal testing track first), or upload the `.aab` in Play Console.
 
 Building locally without EAS also works: `npx expo prebuild --platform android` then `cd android && ./gradlew bundleRelease` (needs Android Studio and your own signing key).
