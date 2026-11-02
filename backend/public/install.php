@@ -54,6 +54,11 @@ $checks = [
     ['PHP 8.2 or newer', PHP_VERSION_ID >= 80200, 'You have ' . PHP_VERSION . '. Change it in cPanel → MultiPHP Manager.'],
 ];
 foreach (['pdo_mysql', 'sodium', 'fileinfo', 'mbstring', 'gd', 'curl', 'openssl', 'json'] as $ext) {
+    if ($ext === 'sodium' && !extension_loaded('sodium') && is_file(BASE_PATH . '/vendor/paragonie/sodium_compat/autoload.php')) {
+        // Not blocking: the bundled pure-PHP library takes over, but photo and video encryption is much slower
+        $checks[] = ['PHP extension sodium', true, '', 'Using the slower built-in fallback. Photos and videos will upload and open slowly. Ask your host to enable sodium for PHP ' . PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION . ' (php.ini: ' . (php_ini_loaded_file() ?: 'none') . ').'];
+        continue;
+    }
     $checks[] = ["PHP extension $ext", extension_loaded($ext), 'Turn it on in cPanel → Select PHP Version → Extensions.'];
 }
 $checks[] = ['Composer packages (vendor/) uploaded', is_file(BASE_PATH . '/vendor/autoload.php'), 'Upload the full package, including the backend/vendor folder.'];
@@ -211,8 +216,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 // ---- Form ------------------------------------------------------------------------------
 $guessUrl = ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'api.yourdomain.com') . rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
 $rows = '';
-foreach ($checks as [$label, $ok, $fix]) {
-    $rows .= '<tr><td>' . h($label) . '</td><td class="' . ($ok ? 'ok' : 'bad') . '">' . ($ok ? 'OK' : 'Missing') . '</td></tr>' . ($ok ? '' : '<tr><td colspan="2" class="muted">' . h($fix) . '</td></tr>');
+foreach ($checks as $c) {
+    [$label, $ok, $fix] = $c;
+    $warn = $c[3] ?? '';
+    $rows .= '<tr><td>' . h($label) . '</td><td class="' . ($ok ? 'ok' : 'bad') . '">' . ($ok ? ($warn ? 'Fallback' : 'OK') : 'Missing') . '</td></tr>'
+        . ($ok ? ($warn ? '<tr><td colspan="2" class="muted">' . h($warn) . '</td></tr>' : '') : '<tr><td colspan="2" class="muted">' . h($fix) . '</td></tr>');
 }
 $errHtml = $errors ? '<div class="err" role="alert">' . implode('<br>', array_map('h', $errors)) . '</div>' : '';
 page('Install', $errHtml

@@ -6,10 +6,10 @@
   "require": {
     "php": ">=8.2",
     "ext-pdo": "*",
-    "ext-sodium": "*",
     "ext-fileinfo": "*",
     "ext-json": "*",
-    "phpmailer/phpmailer": "^6.9"
+    "phpmailer/phpmailer": "^6.9",
+    "paragonie/sodium_compat": "^2.1"
   },
   "autoload": {
     "psr-4": {

@@ -102,6 +102,7 @@ final class SettingsPage
             ['Push notifications', Config::get('PUSH_DRIVER') === 'fcm' && is_readable((string)Config::get('FCM_SERVICE_ACCOUNT')), 'PUSH_DRIVER=' . Config::get('PUSH_DRIVER', 'off')],
             ['Instant relay', $set('RELAY_URL') && $set('RELAY_SECRET'), $set('RELAY_URL') ? 'Configured' : 'Not set (app falls back to polling)'],
             ['TURN for calls', $set('TURN_URLS') && $set('TURN_SECRET'), $set('TURN_URLS') ? 'Configured' : 'Not set (some calls on mobile data will fail)'],
+            ['Native sodium (fast media encryption)', extension_loaded('sodium'), extension_loaded('sodium') ? 'On' : 'Using the slower built-in fallback; ask your host to enable the sodium extension'],
             ['Admin two-step sign-in required', Config::bool('ADMIN_REQUIRE_2FA', true), Config::bool('ADMIN_REQUIRE_2FA', true) ? 'Yes' : 'No'],
         ];
     }
