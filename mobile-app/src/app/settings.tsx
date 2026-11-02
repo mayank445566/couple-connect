@@ -66,6 +66,15 @@ export default function Settings() {
         </Card>
       ) : null}
 
+      <Card>
+        <T weight="700">Who can see your chats</T>
+        <Muted>
+          Chats travel over HTTPS and photos are encrypted on our server. Chats are not end-to-end encrypted. Our team does not browse chats.
+          Moderators see only messages you attach to a report. If we suspect illegal activity, or receive a legal request or a safety report,
+          an owner can open one couple's chat for up to 24 hours, and every access is logged. Deleted and disappearing messages cannot be recovered.
+        </Muted>
+      </Card>
+
       {n ? (
         <Card>
           <T weight="700">Notifications</T>

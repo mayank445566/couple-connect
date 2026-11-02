@@ -46,6 +46,9 @@ foreach (Database::all('SELECT id FROM users WHERE deletion_requested_at IS NOT 
     });
 }
 
+// Heartbeat for the admin health check
+@file_put_contents(\App\Core\Config::storage('cache') . '/cron_last_run', (string)time());
+
 // 4. Housekeeping
 Database::run('DELETE FROM rate_limits WHERE reset_at < UTC_TIMESTAMP() - INTERVAL 1 HOUR');
 Database::run('DELETE FROM user_codes WHERE expires_at < UTC_TIMESTAMP() - INTERVAL 1 DAY');

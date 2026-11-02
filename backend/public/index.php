@@ -37,9 +37,15 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
     }
 }
 
+// Server-rendered admin panel (Phase 5)
+$__req = Request::fromGlobals();
+if ($__req->path === '/admin' || str_starts_with($__req->path, '/admin/')) {
+    \App\Admin\Kernel::handle($__req);
+}
+
 try {
     $router = require BASE_PATH . '/src/routes.php';
-    $router->dispatch(Request::fromGlobals());
+    $router->dispatch($__req);
 } catch (ApiException $e) {
     Response::error($e);
 } catch (\Throwable $e) {
