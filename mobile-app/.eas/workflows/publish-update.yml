@@ -1,0 +1,15 @@
+# Sends JavaScript changes to installed preview APKs over the air (no new APK needed).
+# Runs on every push to main. A new APK is only needed when native code changes
+# (a new native library or an app.json plugin change); bump "version" in app.json then.
+name: Publish preview update
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  update:
+    name: Publish update to preview channel
+    type: update
+    params:
+      channel: preview
