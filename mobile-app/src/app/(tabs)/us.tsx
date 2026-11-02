@@ -3,11 +3,13 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
-import { Avatar, Button, Card, Field, Header, Muted, Row, Screen, T, errorText } from '../../components/ui';
+import { Avatar, Button, Card, Field, Header, Muted, Row, Screen, T, errorText, IconBubble } from '../../components/ui';
 import { api, Couple, Me, uploadMedia } from '../../lib/api';
+import { shrinkPhoto } from '../../lib/compress';
 import { useLoad } from '../../lib/useLoad';
 import { useAuth } from '../../state/AuthProvider';
 import { useTheme } from '../../state/ThemeProvider';
+import { t } from '../../lib/i18n';
 
 export default function Us() {
   const { c } = useTheme();
@@ -24,7 +26,7 @@ export default function Us() {
       setMe(await api<Me>('PATCH', '/me', patch));
       setEditing(false);
     } catch (e) {
-      Alert.alert('Could not save', errorText(e));
+      Alert.alert(t('Could not save'), errorText(e));
     } finally {
       setBusy(false);
     }
@@ -34,10 +36,11 @@ export default function Us() {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.85 });
     if (r.canceled || !r.assets[0]) return;
     try {
-      const m = await uploadMedia({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? 'avatar.jpg', type: r.assets[0].mimeType ?? 'image/jpeg' }, 'avatar');
+      const a0 = r.assets[0];
+      const m = await uploadMedia(await shrinkPhoto({ uri: a0.uri, name: a0.fileName ?? 'avatar.jpg', type: a0.mimeType ?? 'image/jpeg', width: a0.width, height: a0.height }), 'avatar');
       await save({ avatar_media_id: m.id });
     } catch (e) {
-      Alert.alert('Upload failed', errorText(e));
+      Alert.alert(t('Upload failed'), errorText(e));
     }
   };
 
@@ -96,7 +99,7 @@ export default function Us() {
       {links.map(([icon, label, to]) => (
         <Card key={to} onPress={() => router.push(to as any)} style={{ paddingVertical: 14 }}>
           <Row>
-            <Ionicons name={icon} size={22} color={c.primary} />
+            <IconBubble name={icon} size={38} />
             <T style={{ flex: 1 }}>{label}</T>
             <Ionicons name="chevron-forward" size={18} color={c.muted} />
           </Row>

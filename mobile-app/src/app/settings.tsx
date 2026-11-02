@@ -9,6 +9,8 @@ import { api, Me } from '../lib/api';
 import { useLoad } from '../lib/useLoad';
 import { useAuth } from '../state/AuthProvider';
 import { useTheme } from '../state/ThemeProvider';
+import { LANGS, setLang, t, useLang } from '../lib/i18n';
+import { setSoundsEnabled, soundsEnabled } from '../lib/sounds';
 
 type Sess = { id: number; device_name: string | null; platform: string | null; ip: string | null; created_at: string; last_used_at: string | null; current: boolean };
 
@@ -24,10 +26,10 @@ export default function Settings() {
     try {
       setMe(await api<Me>('PATCH', '/me', patch));
     } catch (e) {
-      Alert.alert('Could not save', errorText(e));
+      Alert.alert(t('Could not save'), errorText(e));
     }
   };
-  const patchPrefs = (patch: Record<string, unknown>) => apply(patch).catch((e) => Alert.alert('Could not save', errorText(e)));
+  const patchPrefs = (patch: Record<string, unknown>) => apply(patch).catch((e) => Alert.alert(t('Could not save'), errorText(e)));
 
   const exportData = async () => {
     try {
@@ -48,15 +50,31 @@ export default function Settings() {
       f.write(json);
       await Sharing.shareAsync(f.uri, { mimeType: 'application/json', dialogTitle: 'Your Couple Connect data' });
     } catch (e) {
-      Alert.alert('Export failed', errorText(e));
+      Alert.alert(t('Export failed'), errorText(e));
     }
   };
 
   const n = prefs?.notifications;
+  const lang = useLang();
+  const [sounds, setSounds] = useState(soundsEnabled());
 
   return (
     <Screen>
       <Header title="Settings" onBack={() => router.back()} />
+
+      <Card>
+        <T weight="700">Language</T>
+        <Muted>Menus, games and questions change to this language.</Muted>
+        <Row gap={8}>
+          {LANGS.map((l) => (
+            <Pill key={l.code} label={l.name} active={lang === l.code} onPress={() => setLang(l.code)} />
+          ))}
+        </Row>
+      </Card>
+
+      <Card>
+        <Toggle label="Sound effects" hint="Soft sounds for messages, love taps and game cards." value={sounds} onChange={(v) => { setSoundsEnabled(v); setSounds(v); }} />
+      </Card>
 
       {me?.paired ? (
         <Card>
@@ -104,15 +122,15 @@ export default function Settings() {
           <Row key={s.id}>
             <Ionicons name={s.platform === 'web' ? 'desktop-outline' : 'phone-portrait-outline'} size={20} color={c.muted} />
             <View style={{ flex: 1 }}>
-              <T>{s.device_name ?? s.platform ?? 'Device'}{s.current ? ' (this device)' : ''}</T>
-              <Muted>Active {timeAgo(s.last_used_at ?? s.created_at)}</Muted>
+              <T>{s.device_name ?? s.platform ?? t('Device')}{s.current ? ` (${t('this device')})` : ''}</T>
+              <Muted>{t('Active {when}', { when: timeAgo(s.last_used_at ?? s.created_at) })}</Muted>
             </View>
             {!s.current ? (
               <Button title="Sign out" variant="ghost" onPress={async () => { try { await api('DELETE', `/auth/sessions/${s.id}`); sessions.reload(); } catch (e) { setErr(e); } }} />
             ) : null}
           </Row>
         ))}
-        <Button title="Sign out everywhere" variant="secondary" onPress={() => Alert.alert('Sign out everywhere?', 'Every device, including this one, will be signed out.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Sign out', style: 'destructive', onPress: async () => { await api('POST', '/auth/logout-all').catch(() => {}); signOut({ remote: false }); } }])} />
+        <Button title="Sign out everywhere" variant="secondary" onPress={() => Alert.alert(t('Sign out everywhere?'), t('Every device, including this one, will be signed out.'), [{ text: t('Cancel'), style: 'cancel' }, { text: t('Sign out'), style: 'destructive', onPress: async () => { await api('POST', '/auth/logout-all').catch(() => {}); signOut({ remote: false }); } }])} />
       </Card>
 
       {err ? <ErrorBox error={err} /> : null}
@@ -142,7 +160,7 @@ function Toggle({ label, hint, value, onChange }: { label: string; hint?: string
         <T>{label}</T>
         {hint ? <Muted>{hint}</Muted> : null}
       </View>
-      <Switch value={value} onValueChange={onChange} trackColor={{ true: c.primary, false: c.border }} thumbColor="#fff" />
+      <Switch value={value} onValueChange={onChange} trackColor={{ true: c.primary, false: c.border }} thumbColor="#fff" {...({ activeThumbColor: "#fff", activeTrackColor: c.primary } as object)} />
     </Row>
   );
 }
@@ -184,7 +202,7 @@ function PasswordPanel({ onDone }: { onDone: () => void }) {
           setErr(null);
           try {
             await api('POST', '/me/password', { current_password: cur, new_password: next });
-            Alert.alert('Password changed', 'Other devices were signed out.');
+            Alert.alert(t('Password changed'), t('Other devices were signed out.'));
             onDone();
           } catch (e) {
             setErr(e);

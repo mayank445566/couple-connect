@@ -2,13 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, TextInput, View } from 'react-native';
 import { Message, uploadMedia } from '../../lib/api';
+import { shrinkPhoto } from '../../lib/compress';
 import { useSync } from '../../state/SyncProvider';
-import { useTheme } from '../../state/ThemeProvider';
-import { errorText, T } from '../ui';
+import { FONT, useTheme } from '../../state/ThemeProvider';
+import { cardStyle, errorText, IconBubble, T } from '../ui';
 import { preview } from './MessageBubble';
+import { t } from '../../lib/i18n';
 
 type Props = {
   replyTo: Message | null;
@@ -39,7 +42,7 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
         await onSaveEdit(editing, body);
         setText('');
       } catch (e) {
-        Alert.alert('Could not edit', errorText(e));
+        Alert.alert(t('Could not edit'), errorText(e));
       }
       return;
     }
@@ -55,7 +58,7 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
       send({ type: kind, media_id: media.id, reply_to_id: replyTo?.id ?? null, local_uri: kind === 'image' ? file.uri : undefined });
       onCancelReply();
     } catch (e) {
-      Alert.alert('Upload failed', errorText(e));
+      Alert.alert(t('Upload failed'), errorText(e));
     } finally {
       setUploading(null);
     }
@@ -65,14 +68,16 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
     setMenu(false);
     if (camera) {
       const p = await ImagePicker.requestCameraPermissionsAsync();
-      if (!p.granted) return Alert.alert('Camera access needed', 'Allow camera access in settings to take photos.');
+      if (!p.granted) return Alert.alert(t('Camera access needed'), t('Allow camera access in settings to take photos.'));
     }
     const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images', 'videos'], quality: 0.85, videoMaxDuration: 300 };
     const r = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
     if (r.canceled || !r.assets[0]) return;
     const a = r.assets[0];
     const isVideo = a.type === 'video';
-    await sendFile({ uri: a.uri, name: a.fileName ?? (isVideo ? 'video.mp4' : 'photo.jpg'), type: a.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg') }, isVideo ? 'video' : 'image', isVideo && a.duration ? a.duration : undefined);
+    const picked = { uri: a.uri, name: a.fileName ?? (isVideo ? 'video.mp4' : 'photo.jpg'), type: a.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg') };
+    const file = isVideo ? picked : await shrinkPhoto({ ...picked, width: a.width, height: a.height });
+    await sendFile(file, isVideo ? 'video' : 'image', isVideo && a.duration ? a.duration : undefined);
   };
 
   const pickDoc = async () => {
@@ -85,7 +90,7 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
 
   const startRec = async () => {
     const p = await requestRecordingPermissionsAsync();
-    if (!p.granted) return Alert.alert('Microphone access needed', 'Allow microphone access in settings to send voice notes.');
+    if (!p.granted) return Alert.alert(t('Microphone access needed'), t('Allow microphone access in settings to send voice notes.'));
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
     await recorder.prepareToRecordAsync();
     recorder.record();
@@ -104,7 +109,7 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
   const banner = editing ? { title: 'Editing message', body: editing.body ?? '', cancel: () => { onCancelEdit(); setText(''); } } : replyTo ? { title: `Replying to ${replyTo.mine ? 'yourself' : 'partner'}`, body: preview(replyTo), cancel: onCancelReply } : null;
 
   return (
-    <View style={{ backgroundColor: c.surface, borderTopWidth: 1, borderTopColor: c.border }}>
+    <View style={[cardStyle(c), { marginHorizontal: 10, marginBottom: 10, marginTop: 4, borderRadius: 28 }]}>
       {banner ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', padding: 10, paddingBottom: 0, gap: 8 }}>
           <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: c.primary, paddingLeft: 8 }}>
@@ -122,9 +127,7 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
             ['document-outline', 'File', pickDoc],
           ].map(([icon, label, fn]) => (
             <Pressable key={label as string} onPress={fn as () => void} style={{ alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: c.primary + '22', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={icon as any} size={24} color={c.primary} />
-              </View>
+              <IconBubble name={icon as any} size={52} filled />
               <T size={12}>{label as string}</T>
             </Pressable>
           ))}
@@ -143,15 +146,13 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
             <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: c.danger }} />
             <T>Recording {Math.floor(rec.durationMillis / 60000)}:{String(Math.floor((rec.durationMillis / 1000) % 60)).padStart(2, '0')}</T>
           </View>
-          <Pressable onPress={() => stopRec(true)} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel="Send voice note">
-            <Ionicons name="send" size={20} color={c.onPrimary} />
-          </Pressable>
+          <RoundAction onPress={() => stopRec(true)} label="Send voice note" icon="send" />
         </View>
       ) : (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 4, padding: 6 }}>
           {!editing ? (
             <Pressable onPress={() => setMenu((v) => !v)} style={{ padding: 8 }} accessibilityLabel="Attach">
-              <Ionicons name={menu ? 'close-circle-outline' : 'add-circle-outline'} size={28} color={c.primary} />
+              <Ionicons name={menu ? 'close-circle' : 'add-circle'} size={30} color={c.primary} />
             </Pressable>
           ) : null}
           <TextInput
@@ -164,19 +165,26 @@ export function Composer({ replyTo, onCancelReply, editing, onCancelEdit, onSave
             placeholderTextColor={c.muted}
             multiline
             maxLength={4000}
-            style={{ flex: 1, maxHeight: 120, minHeight: 44, backgroundColor: c.background, color: c.text, borderRadius: 22, paddingHorizontal: 16, paddingTop: 11, paddingBottom: 11, fontSize: 16 * c.fontScale }}
+            style={{ flex: 1, maxHeight: 120, minHeight: 44, backgroundColor: 'transparent', color: c.text, borderRadius: 22, paddingHorizontal: 6, paddingTop: 11, paddingBottom: 11, fontSize: 16 * c.fontScale, fontFamily: FONT.medium }}
           />
           {text.trim() || editing ? (
-            <Pressable onPress={submit} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel={editing ? 'Save edit' : 'Send'}>
-              <Ionicons name={editing ? 'checkmark' : 'send'} size={20} color={c.onPrimary} />
-            </Pressable>
+            <RoundAction onPress={submit} label={editing ? 'Save edit' : 'Send'} icon={editing ? 'checkmark' : 'send'} />
           ) : (
-            <Pressable onPress={startRec} disabled={!!uploading} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }} accessibilityLabel="Record voice note">
-              <Ionicons name="mic" size={22} color={c.onPrimary} />
-            </Pressable>
+            <RoundAction onPress={startRec} disabled={!!uploading} label="Record voice note" icon="mic" />
           )}
         </View>
       )}
     </View>
+  );
+}
+
+function RoundAction({ onPress, label, icon, disabled }: { onPress: () => void; label: string; icon: React.ComponentProps<typeof Ionicons>['name']; disabled?: boolean }) {
+  const { c } = useTheme();
+  return (
+    <Pressable onPress={onPress} disabled={disabled} accessibilityLabel={label} style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.9 : 1 }], opacity: disabled ? 0.5 : 1 })}>
+      <LinearGradient colors={c.grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={20} color="#fff" />
+      </LinearGradient>
+    </Pressable>
   );
 }

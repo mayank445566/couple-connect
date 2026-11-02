@@ -32,6 +32,8 @@ final class MediaController
     /** multipart/form-data: file=<binary>, kind=image|video|audio|voice|file|avatar, duration_ms? */
     public function upload(Request $req, array $user): array
     {
+        // Encrypting a large video with the pure-PHP fallback can take a while on shared hosting
+        @set_time_limit(300);
         RateLimiter::hit('upload:user:' . $user['id'], 60, 3600);
         $kind = (string)($_POST['kind'] ?? '');
         if (!in_array($kind, ['image', 'video', 'audio', 'voice', 'file', 'avatar'], true)) {

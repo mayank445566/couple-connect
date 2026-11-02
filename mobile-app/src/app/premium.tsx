@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { View } from 'react-native';
-import { Button, Card, ErrorBox, Header, Hero, Muted, Row, Screen, SkeletonList, T} from '../components/ui';
+import { Button, Card, ErrorBox, Header, Hero, Muted, Row, Screen, SkeletonList, T, IconBubble } from '../components/ui';
 import { api, Entitlements } from '../lib/api';
 import { billing, buy, PaymentCancelled, PaymentPending, restorePlay } from '../lib/payments';
 import { useLoad } from '../lib/useLoad';
@@ -12,7 +12,7 @@ import { useTheme } from '../state/ThemeProvider';
 type Product = { sku: string; title: string; description: string; price_display: string; grants: string[]; one_time: boolean; owned: boolean };
 
 const PERKS: [React.ComponentProps<typeof Ionicons>['name'], string][] = [
-  ['flame-outline', '11 private 18+ games for couples, with consent controls'],
+  ['flame-outline', '12 private 18+ games with 1300+ cards, no limits'],
   ['color-palette-outline', 'Every premium theme and custom bubble colours'],
   ['people-outline', 'Unlocks for both of you with one purchase'],
   ['infinite-outline', 'Pay once. No subscription, no renewals'],
@@ -24,7 +24,7 @@ export default function Premium() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<unknown>(null);
-  useSyncEvent('premium.', () => store.reload());
+  useSyncEvent('premium.', () => { store.reload(); reloadThemes().catch(() => {}); });
 
   const product = store.data?.products.find((p) => p.sku === 'premium_lifetime') ?? store.data?.products[0];
   const ent = store.data?.entitlements.premium;
@@ -71,7 +71,7 @@ export default function Premium() {
       </Hero>
       {PERKS.map(([icon, text]) => (
         <Row key={text}>
-          <Ionicons name={icon} size={22} color={c.primary} />
+          <IconBubble name={icon} size={38} />
           <T style={{ flex: 1 }}>{text}</T>
         </Row>
       ))}

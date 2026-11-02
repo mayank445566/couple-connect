@@ -8,6 +8,7 @@ import { useLoad } from '../lib/useLoad';
 import { useSyncEvent } from '../state/SyncProvider';
 import { useTheme } from '../state/ThemeProvider';
 import type { Call } from './call/[id]';
+import { t } from '../lib/i18n';
 
 export default function Calls() {
   const { c } = useTheme();
@@ -19,7 +20,7 @@ export default function Calls() {
       const r = await api<{ id: number }>('POST', '/calls', { kind });
       router.push(`/call/${r.id}`);
     } catch (e) {
-      Alert.alert('Could not call', errorText(e));
+      Alert.alert(t('Could not call'), errorText(e));
     }
   };
 
@@ -41,7 +42,7 @@ export default function Calls() {
             <Row>
               <Ionicons name={k.kind === 'video' ? 'videocam' : 'call'} size={20} color={missed ? c.danger : c.primary} />
               <View style={{ flex: 1 }}>
-                <T weight="600" color={missed ? c.danger : c.text}>{k.outgoing ? 'Outgoing' : 'Incoming'} {k.kind === 'video' ? 'video' : 'voice'} call</T>
+                <T weight="600" color={missed ? c.danger : c.text}>{t(`${k.outgoing ? 'Outgoing' : 'Incoming'} ${k.kind === 'video' ? 'video' : 'voice'} call`)}</T>
                 <Muted>
                   {timeAgo(k.created_at)} · {k.duration_seconds != null ? `${Math.floor(k.duration_seconds / 60)}m ${k.duration_seconds % 60}s` : k.status}
                 </Muted>

@@ -25,6 +25,12 @@ final class Entitlements
                 [$user['active_couple_id'], $user['id']]
             )->fetchAll(\PDO::FETCH_COLUMN);
         }
+        // Premium always includes premium themes (an admin grant of just "premium" used to leave themes locked)
+        foreach (['own', 'partner'] as $list) {
+            if (in_array('premium', $$list, true)) {
+                $$list[] = 'themes';
+            }
+        }
         $out = [];
         foreach (['premium', 'themes'] as $e) {
             $out[$e] = ['owned' => in_array($e, $own, true) || in_array($e, $partner, true), 'via_partner' => !in_array($e, $own, true) && in_array($e, $partner, true)];

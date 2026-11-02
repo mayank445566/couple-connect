@@ -1,9 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, router } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Share, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Avatar, Button, Card, ErrorBox, Field, H1, Muted, Pill, Row, Screen, T, fieldErrors } from '../components/ui';
+import { Avatar, Button, Card, ErrorBox, Field, Muted, Pill, Row, Screen, T, fieldErrors } from '../components/ui';
 import { api, Partner } from '../lib/api';
 import { useAuth } from '../state/AuthProvider';
 import { useTheme } from '../state/ThemeProvider';
@@ -81,7 +82,18 @@ export default function Pair() {
 
   return (
     <Screen>
-      <H1>Connect with your partner</H1>
+      <View style={{ alignItems: 'center', gap: 6, marginTop: 12, marginBottom: 4 }}>
+        <Row gap={0}>
+          <Avatar url={me?.avatar_url} name={me?.display_name} size={72} ring />
+          <View style={{ zIndex: 2, marginHorizontal: -12, width: 40, height: 40, borderRadius: 20, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', boxShadow: c.shadow || undefined } as any}>
+            <Ionicons name="heart" size={22} color={c.primary} />
+          </View>
+          <View style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 2.5, borderStyle: 'dashed', borderColor: c.primary + '88', alignItems: 'center', justifyContent: 'center' }}>
+            <T serif size={30} color={c.primary}>?</T>
+          </View>
+        </Row>
+        <T serif size={28} center style={{ marginTop: 10 }}>Connect with your partner</T>
+      </View>
       <Muted>Hi {me?.display_name}. One of you shares a code, the other enters it. Then the person who shared approves. Nobody can join without both of you agreeing.</Muted>
 
       {reqs?.incoming.map((r) => (
@@ -118,7 +130,7 @@ export default function Pair() {
       {tab === 'share' ? (
         invite && cd && cd.left > 0 ? (
           <Card style={{ alignItems: 'center', gap: 12 }}>
-            <T size={38} weight="800" style={{ letterSpacing: 8 }}>{invite.code}</T>
+            <T serif size={44} color={c.primary} style={{ letterSpacing: 10 }}>{invite.code}</T>
             <View style={{ backgroundColor: '#fff', padding: 12, borderRadius: 16 }}>
               <QRCode value={invite.qr_payload} size={180} />
             </View>

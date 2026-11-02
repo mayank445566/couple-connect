@@ -5,7 +5,8 @@ import { Pressable, View } from 'react-native';
 import { Button, Card, ErrorBox, Field, Header, Muted, Pill, Row, Screen, SkeletonList, T, errorText } from '../../components/ui';
 import { api, ApiError } from '../../lib/api';
 import { gameIcon } from '../../lib/constants';
-import { ADULT_LEVELS, FREE_LEVELS, Game, Session } from '../../lib/games';
+import { ADULT_LEVELS, FREE_LEVELS, Game, LEVEL_NAMES, Session } from '../../lib/games';
+import { t } from '../../lib/i18n';
 import { useLoad } from '../../lib/useLoad';
 import { useTheme } from '../../state/ThemeProvider';
 
@@ -71,7 +72,7 @@ export default function GameDetail() {
           <Row style={{ flexWrap: 'wrap' }} gap={8}>
             <Pill label="Mixed" active={level === null} onPress={() => { setLevel(null); setPack(null); }} />
             {shownLevels.map((l) => (
-              <Pill key={l} label={l[0].toUpperCase() + l.slice(1)} active={level === l} onPress={() => { setLevel(l); setPack(null); }} />
+              <Pill key={l} label={LEVEL_NAMES[l] ?? l} active={level === l} onPress={() => { setLevel(l); setPack(null); }} />
             ))}
           </Row>
         </View>
@@ -85,7 +86,7 @@ export default function GameDetail() {
               <Card style={{ paddingVertical: 10, borderColor: pack === p.id ? c.primary : c.border, borderWidth: pack === p.id ? 2 : 1, opacity: p.locked ? 0.6 : 1 }}>
                 <Row>
                   <T style={{ flex: 1 }}>{p.title}</T>
-                  <Muted>{p.questions} questions</Muted>
+                  <Muted>{t('{n} questions', { n: p.questions })}</Muted>
                   {p.locked ? <Ionicons name="lock-closed" size={16} color={c.muted} /> : null}
                 </Row>
               </Card>
@@ -96,11 +97,14 @@ export default function GameDetail() {
 
       <View style={{ gap: 6 }}>
         <T weight="700">Rounds</T>
-        <Row gap={8}>
-          {[5, 10, 15].map((n) => (
+        <Row gap={8} style={{ flexWrap: 'wrap' }}>
+          {(game.max_rounds > 30 ? [10, 20, 50, 100] : [5, 10, 15, 30]).map((n) => (
             <Pill key={n} label={String(n)} active={(rounds ?? game.rounds) === n} onPress={() => setRounds(n)} />
           ))}
+          {/* Premium: no limit. Play until you stop or every card has been played. */}
+          {game.max_rounds > 30 ? <Pill label="∞ Endless" icon="infinite" active={rounds === 0} onPress={() => setRounds(0)} /> : null}
         </Row>
+        {rounds === 0 ? <Muted>Keep going as long as you like. New cards first, no repeats.</Muted> : null}
       </View>
 
       {err ? <ErrorBox error={err} /> : null}
@@ -123,7 +127,7 @@ export default function GameDetail() {
         {(custom.data ?? []).map((q) => (
           <Card key={q.id} style={{ paddingVertical: 10 }}>
             <Row>
-              <T style={{ flex: 1 }}>{q.text}</T>
+              <T raw style={{ flex: 1 }}>{q.text}</T>
               <Pressable
                 onPress={async () => {
                   try {
@@ -134,7 +138,7 @@ export default function GameDetail() {
                   }
                 }}
                 hitSlop={10}
-                accessibilityLabel="Delete question"
+                accessibilityLabel={t('Delete question')}
               >
                 <Ionicons name="trash-outline" size={18} color={c.muted} />
               </Pressable>

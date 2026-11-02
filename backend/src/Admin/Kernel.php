@@ -86,6 +86,7 @@ final class Kernel
             ['POST', '/admin/products/{id}', [SettingsPage::class, 'saveProduct'], 'products', false],
             ['GET', '/admin/settings', [SettingsPage::class, 'show'], 'settings', false],
             ['POST', '/admin/settings', [SettingsPage::class, 'save'], 'settings', false],
+            ['POST', '/admin/settings/update-database', [SettingsPage::class, 'updateDatabase'], 'settings', false],
 
             ['GET', '/admin/admins', [AdminsPage::class, 'index'], 'admins', false],
             ['POST', '/admin/admins', [AdminsPage::class, 'create'], 'admins', false],

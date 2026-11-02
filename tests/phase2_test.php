@@ -42,7 +42,7 @@ echo "Game catalog\n";
 $r = call('GET', '/games', null, $A);
 $cat = $r['json']['data'];
 check('20 free games', count($cat['games']['free']) === 20, count($cat['games']['free']));
-check('11 adult games, all locked without premium', count($cat['games']['adult']) === 11 && !array_filter($cat['games']['adult'], fn($g) => !$g['locked']));
+check('12 adult games, all locked without premium', count($cat['games']['adult']) === 12 && !array_filter($cat['games']['adult'], fn($g) => !$g['locked']));
 check('free games unlocked', !array_filter($cat['games']['free'], fn($g) => $g['locked']));
 
 echo "Match mode: This or That\n";

@@ -4,22 +4,33 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Button, Card, ErrorBox, Field, Header, Hero, Muted, Row, Screen, SkeletonList, T, errorText } from '../../components/ui';
 import { api, Couple } from '../../lib/api';
-import { Game, Session } from '../../lib/games';
+import { PromptCard } from '../../components/PromptCard';
+import { Game, LEVEL_NAMES, Session } from '../../lib/games';
+import { t } from '../../lib/i18n';
+import { play } from '../../lib/sounds';
 import { useLoad } from '../../lib/useLoad';
 import { useAuth } from '../../state/AuthProvider';
 import { useSyncEvent } from '../../state/SyncProvider';
 import { useTheme } from '../../state/ThemeProvider';
 
-function describe(a: any, names: Record<number, string>): string {
+/** Shows the option in the app language even though answers are stored in English. */
+function labelOf(choice: string, q?: { options: string[] | null; labels: string[] | null }): string {
+  const i = q?.options?.indexOf(choice) ?? -1;
+  return i >= 0 && q?.labels?.[i] ? q.labels[i] : choice;
+}
+
+function describe(a: any, names: Record<number, string>, q?: { options: string[] | null; labels: string[] | null }): string {
   if (!a) return '—';
-  if (a.choice) return a.choice;
-  if (a.user_id) return names[a.user_id] ?? 'Someone';
+  if (a.choice) return labelOf(a.choice, q);
+  if (a.user_id) return names[a.user_id] ?? t('Someone');
   if (a.text) return a.text;
-  if (a.done) return 'Done ✓';
-  if (a.statements) return a.statements.map((s: string, i: number) => `${i + 1}. ${s}${a.lie === i ? '  (the lie)' : ''}`).join('\n');
-  if (typeof a.pick === 'number') return `Statement ${a.pick + 1}`;
+  if (a.done) return t('Done ✓');
+  if (a.statements) return a.statements.map((s: string, i: number) => `${i + 1}. ${s}${a.lie === i ? `  (${t('the lie')})` : ''}`).join('\n');
+  if (typeof a.pick === 'number') return t('Statement {n}', { n: a.pick + 1 });
   return '—';
 }
+
+const LOVE_LANG: Record<string, string> = { words: 'Words of affirmation', time: 'Quality time', gifts: 'Gifts', service: 'Acts of service', touch: 'Physical touch' };
 
 export default function GameSession() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -53,6 +64,21 @@ export default function GameSession() {
   }, [slug]);
 
   const roundId = s.data?.round?.id;
+  const roundStatus = s.data?.round?.status;
+  const result = s.data?.round?.result;
+  // Sounds: a card flip for each new card, a little fanfare when you match or guess right
+  useEffect(() => {
+    if (!roundId) return;
+    play(s.data?.game.wild ? 'sparkle' : 'flip');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundId]);
+  useEffect(() => {
+    if (roundStatus === 'revealed' && (result?.match === true || result?.correct === true)) play('match');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundStatus, result?.match, result?.correct]);
+  useEffect(() => {
+    if (s.data?.status === 'finished') play('match');
+  }, [s.data?.status]);
   useEffect(() => {
     setText('');
     setStatements(['', '', '']);
@@ -78,7 +104,8 @@ export default function GameSession() {
 
   const myId = me!.id;
   const partner = couple.data?.partner;
-  const names: Record<number, string> = { [myId]: 'You', ...(partner ? { [partner.id]: partner.display_name } : {}) };
+  const partnerName = partner?.display_name ?? t('your partner');
+  const names: Record<number, string> = { [myId]: t('You'), ...(partner ? { [partner.id]: partner.display_name } : {}) };
   const r = d.round;
   const isSubject = r?.subject_id === myId;
   const isGuesser = d.game.mode === 'guess' && r?.subject_id != null && !isSubject;
@@ -97,8 +124,8 @@ export default function GameSession() {
         <Header title={d.game.title} onBack={() => router.back()} />
         <Hero style={{ alignItems: 'center' }}>
           <Ionicons name="game-controller" size={42} color="#fff" />
-          <T color="#fff" weight="700" size={18} center>{mine ? `Waiting for ${partner?.display_name ?? 'your partner'} to join` : `${partner?.display_name ?? 'Your partner'} wants to play`}</T>
-          <T color="#ffffffCC" center>{d.total_rounds} rounds{d.level ? ` · ${d.level}` : ''}</T>
+          <T color="#fff" weight="700" size={18} center>{mine ? t('Waiting for {name} to join', { name: partnerName }) : t('{name} wants to play', { name: partner?.display_name ?? t('Your partner') })}</T>
+          <T color="#ffffffCC" center>{d.endless ? t('Endless') : t('{n} rounds', { n: d.total_rounds })}{d.level ? ` · ${t(LEVEL_NAMES[d.level] ?? d.level)}` : ''}</T>
         </Hero>
         {d.game.section === 'adult' ? <Muted center>18+ game. Either of you can skip any question or stop at any time.</Muted> : null}
         {mine ? (
@@ -122,10 +149,10 @@ export default function GameSession() {
         <Hero style={{ alignItems: 'center' }}>
           <T size={40}>{d.status === 'finished' ? '🎉' : '👋'}</T>
           <T color="#fff" size={20} weight="700">{d.status === 'finished' ? 'Game complete' : d.status === 'declined' ? 'Invite declined' : 'Game stopped'}</T>
-          {d.summary?.compatibility_percent != null ? <T color="#fff" size={34} weight="800">{d.summary.compatibility_percent}% in sync</T> : null}
-          {d.game.mode === 'quiz' || d.game.mode === 'guess' ? <T color="#fff">You {myScore} · {partner?.display_name ?? 'Partner'} {partnerScore}</T> : null}
-          {d.summary ? <T color="#ffffffCC">{d.summary.rounds_played} played · {d.summary.rounds_skipped} skipped</T> : null}
-          {d.summary?.top_category?.[String(myId)] ? <T color="#fff">Your top: {d.summary.top_category[String(myId)].replace(/_/g, ' ')}</T> : null}
+          {d.summary?.compatibility_percent != null ? <T color="#fff" size={34} weight="800">{t('{n}% in sync', { n: d.summary.compatibility_percent })}</T> : null}
+          {d.game.mode === 'quiz' || d.game.mode === 'guess' ? <T raw color="#fff">{t('You')} {myScore} · {partner?.display_name ?? t('Partner')} {partnerScore}</T> : null}
+          {d.summary ? <T color="#ffffffCC">{t('{a} played · {b} skipped', { a: d.summary.rounds_played, b: d.summary.rounds_skipped })}</T> : null}
+          {d.summary?.top_category?.[String(myId)] ? <T color="#fff">{t('Your top: {c}', { c: t(LOVE_LANG[d.summary.top_category[String(myId)]] ?? d.summary.top_category[String(myId)]) })}</T> : null}
         </Hero>
         <Button title="Play again" onPress={() => router.replace(`/games/${d.game.slug}`)} />
         <Button title="Back to games" variant="ghost" onPress={() => router.back()} />
@@ -138,15 +165,24 @@ export default function GameSession() {
     <Screen refreshing={s.refreshing} onRefresh={s.onRefresh}>
       <Header title={d.game.title} onBack={() => router.back()} right={stopBtn} />
       <Row style={{ justifyContent: 'space-between' }}>
-        <Muted>Round {d.round_no} of {d.total_rounds}</Muted>
-        {d.game.mode === 'match' ? <Muted>In sync: {d.scores?.sync ?? 0}</Muted> : d.game.mode !== 'prompt' ? <Muted>You {myScore} · {partner?.display_name ?? 'Partner'} {partnerScore}</Muted> : null}
+        <Muted>{d.endless ? t('Round {n} · Endless', { n: d.round_no }) : t('Round {n} of {total}', { n: d.round_no, total: d.total_rounds })}</Muted>
+        {d.game.mode === 'match' ? <Muted>{t('In sync: {n}', { n: d.scores?.sync ?? 0 })}</Muted> : d.game.mode !== 'prompt' ? <Muted raw>{t('You')} {myScore} · {partner?.display_name ?? t('Partner')} {partnerScore}</Muted> : null}
       </Row>
 
-      {r ? (
+      {r && (d.game.section === 'adult' || d.game.wild) ? (
+        <PromptCard
+          cardKey={r.id}
+          text={r.question.text}
+          kind={r.question.kind}
+          level={r.question.level ? t(LEVEL_NAMES[r.question.level] ?? r.question.level) : null}
+          wild={!!d.game.wild}
+          caption={r.subject_id != null ? (isSubject ? t('Your turn') : t("{name}'s turn", { name: partnerName })) : null}
+        />
+      ) : r ? (
         <Hero>
-          {r.subject_id != null ? <T color="#ffffffCC" size={13}>{isSubject ? 'About you' : `About ${partner?.display_name ?? 'your partner'}`}</T> : null}
-          {r.question.kind === 'truth' || r.question.kind === 'dare' ? <T color="#fff" weight="800" size={13}>{r.question.kind.toUpperCase()}</T> : null}
-          <T color="#fff" size={21} weight="700">{r.question.text}</T>
+          {r.subject_id != null ? <T color="#ffffffCC" size={13}>{isSubject ? t('About you') : t('About {name}', { name: partnerName })}</T> : null}
+          {r.question.kind === 'truth' || r.question.kind === 'dare' ? <T color="#fff" weight="800" size={13}>{r.question.kind === 'truth' ? 'TRUTH' : 'DARE'}</T> : null}
+          <T raw color="#fff" size={21} weight="700">{r.question.text}</T>
         </Hero>
       ) : null}
 
@@ -154,12 +190,12 @@ export default function GameSession() {
         r.my_answer ? (
           <Card>
             <Muted>Your answer</Muted>
-            <T>{describe(r.my_answer, names)}</T>
-            <Muted>{r.partner_answered ? 'Revealing…' : `Waiting for ${partner?.display_name ?? 'your partner'}…`}</Muted>
+            <T raw>{describe(r.my_answer, names, r.question)}</T>
+            <Muted>{r.partner_answered ? t('Revealing…') : t('Waiting for {name}…', { name: partnerName })}</Muted>
           </Card>
         ) : promptOnlySubject && !isSubject ? (
           <Card>
-            <T>It's {partner?.display_name ?? 'your partner'}'s turn. You'll see their answer here.</T>
+            <T>{t("It's {name}'s turn. You'll see their answer here.", { name: partnerName })}</T>
           </Card>
         ) : twoTruths && isGuesser ? (
           r.partner_answer?.statements ? (
@@ -171,7 +207,7 @@ export default function GameSession() {
             </View>
           ) : (
             <Card>
-              <T>Waiting for {partner?.display_name ?? 'your partner'} to write their statements…</T>
+              <T>{t('Waiting for {name} to write their statements…', { name: partnerName })}</T>
             </Card>
           )
         ) : twoTruths ? (
@@ -180,9 +216,9 @@ export default function GameSession() {
             {statements.map((st, i) => (
               <Row key={i}>
                 <View style={{ flex: 1 }}>
-                  <Field value={st} onChangeText={(t) => setStatements((a) => a.map((x, j) => (j === i ? t : x)))} placeholder={`Statement ${i + 1}`} maxLength={200} />
+                  <Field value={st} onChangeText={(t) => setStatements((a) => a.map((x, j) => (j === i ? t : x)))} placeholder={t('Statement {n}', { n: i + 1 })} maxLength={200} />
                 </View>
-                <Pressable onPress={() => setLie(i)} accessibilityLabel={`Mark statement ${i + 1} as the lie`}>
+                <Pressable onPress={() => setLie(i)} accessibilityLabel={t('Mark statement {n} as the lie', { n: i + 1 })}>
                   <Ionicons name={lie === i ? 'close-circle' : 'ellipse-outline'} size={28} color={lie === i ? c.danger : c.muted} />
                 </Pressable>
               </Row>
@@ -191,14 +227,14 @@ export default function GameSession() {
           </View>
         ) : r.question.pick_partner ? (
           <Row>
-            <Option label="Me" onPress={() => call('answer', { answer: { user_id: myId } })} disabled={busy} flex />
+            <Option label={t('Me')} onPress={() => call('answer', { answer: { user_id: myId } })} disabled={busy} flex />
             {partner ? <Option label={partner.display_name} onPress={() => call('answer', { answer: { user_id: partner.id } })} disabled={busy} flex /> : null}
           </Row>
         ) : r.question.options?.length ? (
           <View style={{ gap: 8 }}>
-            {isGuesser ? <Muted>Guess what {partner?.display_name ?? 'your partner'} picks</Muted> : null}
-            {r.question.options.map((o) => (
-              <Option key={o} label={o} onPress={() => call('answer', { answer: { choice: o } })} disabled={busy} />
+            {isGuesser ? <Muted>{t('Guess what {name} picks', { name: partnerName })}</Muted> : null}
+            {r.question.options.map((o, i) => (
+              <Option key={o} label={r.question.labels?.[i] ?? o} onPress={() => call('answer', { answer: { choice: o } })} disabled={busy} />
             ))}
           </View>
         ) : r.question.kind === 'dare' || r.question.kind === 'challenge' ? (
@@ -217,30 +253,30 @@ export default function GameSession() {
             {r.my_answer ? (
               <>
                 <Muted>You</Muted>
-                <T>{describe(r.my_answer, names)}</T>
+                <T raw>{describe(r.my_answer, names, r.question)}</T>
               </>
             ) : null}
             {r.partner_answer ? (
               <>
-                <Muted>{partner?.display_name ?? 'Partner'}</Muted>
-                <T>{describe(r.partner_answer, names)}</T>
+                <Muted raw>{partner?.display_name ?? t('Partner')}</Muted>
+                <T raw>{describe(r.partner_answer, names, r.question)}</T>
               </>
             ) : null}
           </Card>
           {r.result?.match != null ? <T center size={18} weight="700">{r.result.match ? '💞 Same answer!' : 'Different answers'}</T> : null}
-          {r.result?.correct_answer ? <T center>Correct answer: {r.result.correct_answer}</T> : null}
+          {r.result?.correct_answer ? <T center>{t('Correct answer: {a}', { a: labelOf(r.result.correct_answer, r.question) })}</T> : null}
           {d.game.mode === 'guess' && typeof r.result?.correct === 'boolean' ? <T center size={18} weight="700">{r.result.correct ? '🎯 Guessed right!' : 'Not quite!'}</T> : null}
           {r.result?.needs_judge ? (
             isSubject ? (
               <View style={{ gap: 8 }}>
-                <T center>Was {partner?.display_name ?? 'your partner'}'s guess right?</T>
+                <T center>{t("Was {name}'s guess right?", { name: partnerName })}</T>
                 <Row>
                   <Button title="Yes" style={{ flex: 1 }} onPress={() => call('judge', { correct: true })} />
                   <Button title="No" variant="secondary" style={{ flex: 1 }} onPress={() => call('judge', { correct: false })} />
                 </Row>
               </View>
             ) : (
-              <Muted center>{partner?.display_name ?? 'Your partner'} decides if your guess was right…</Muted>
+              <Muted center>{t('{name} decides if your guess was right…', { name: partner?.display_name ?? t('Your partner') })}</Muted>
             )
           ) : null}
         </View>
@@ -257,7 +293,7 @@ export default function GameSession() {
             <Button title="Next: Dare" style={{ flex: 1 }} onPress={() => call('next', { kind: 'dare' })} />
           </Row>
         ) : (
-          <Button title={d.round_no >= d.total_rounds ? 'See results' : 'Next question'} onPress={() => call('next')} loading={busy} />
+          <Button title={!d.endless && d.round_no >= d.total_rounds ? 'See results' : d.game.wild ? 'Draw next card' : 'Next question'} onPress={() => call('next')} loading={busy} />
         )
       ) : null}
       {r && r.status === 'open' && r.my_answer && d.can_skip ? <Button title="Skip this one" variant="ghost" onPress={() => call('skip')} /> : null}
@@ -270,7 +306,7 @@ function Option({ label, onPress, disabled, flex }: { label: string; onPress: ()
   const { c } = useTheme();
   return (
     <Pressable onPress={onPress} disabled={disabled} style={({ pressed }) => ({ flex: flex ? 1 : undefined, padding: 16, borderRadius: 18, backgroundColor: pressed ? c.primary + '22' : c.surface, borderWidth: 1, borderColor: c.border, opacity: disabled ? 0.6 : 1 })}>
-      <T weight="600" center>{label}</T>
+      <T raw weight="600" center>{label}</T>
     </Pressable>
   );
 }
